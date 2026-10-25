@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+# agent-hooks post-rewrite: remap roborev reviews after amend/rebase (opted-in
+# repos only), then pass through to the repo's hooks with stdin replayed.
+#
+# roborev post-rewrite hook v2 - remaps reviews after rebase/amend
+# (The line above is roborev's marker: it stops `roborev` from injecting its
+# own snippet into this shared hooks dir, which used to swallow git's stdin.)
+set -uo pipefail
+# shellcheck disable=SC2034  # read by lib/passthrough.sh
+AH_PASS_STDIN=1  # git passes "<old> <new>" lines on stdin
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
+AH_STDIN_FILE=$(mktemp "${TMPDIR:-/tmp}/agent-hooks-$AH_HOOK_NAME.XXXXXX")
+trap 'rm -f "$AH_STDIN_FILE"' EXIT
+cat >"$AH_STDIN_FILE"
+
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+common=$(git rev-parse --git-common-dir 2>/dev/null || true)
+[[ -n "$common" && "$common" != /* ]] && common="$PWD/$common"
+if ! ah_skipped && [[ -n "$top" ]]; then
+  opted=0
+  [[ -f "$top/.roborev.toml" ]] && opted=1
+  [[ "$(git config --bool --get agent-hooks.roborev 2>/dev/null)" == true ]] && opted=1
+  already=0
+  for h in "$top/.githooks/post-rewrite" "$common/hooks/post-rewrite"; do
+    [[ -x "$h" ]] && command grep -q roborev "$h" 2>/dev/null && already=1
+  done
+  rb=$(command -v roborev 2>/dev/null || { [[ -x "$HOME/.local/bin/roborev" ]] && echo "$HOME/.local/bin/roborev"; } || true)
+  if (( opted )) && (( ! already )) && [[ -n "$rb" ]]; then
+    "$rb" remap --quiet <"$AH_STDIN_FILE" >/dev/null 2>&1 || ah_log "roborev remap exited $?"
+  fi
+fi
+
+ah_chain "$@"

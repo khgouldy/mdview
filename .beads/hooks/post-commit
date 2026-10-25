@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# agent-hooks post-commit: enqueue a roborev review when roborev is installed and
+# the repo opted in (a .roborev.toml at the repo root, or
+# `git config agent-hooks.roborev true`). Never blocks: post-commit cannot.
+#
+# roborev post-commit hook v4 - auto-reviews every commit
+# (The line above is roborev's marker: it stops `roborev` from injecting its
+# own unconditional snippet into this shared hooks dir. Bump it if roborev
+# changes its hook version.)
+set -uo pipefail
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
+
+top=$(git rev-parse --show-toplevel 2>/dev/null || true)
+common=$(git rev-parse --git-common-dir 2>/dev/null || true)
+[[ -n "$common" && "$common" != /* ]] && common="$PWD/$common"
+
+if ! ah_skipped && [[ -n "$top" ]]; then
+  opted=0
+  [[ -f "$top/.roborev.toml" ]] && opted=1
+  [[ "$(git config --bool --get agent-hooks.roborev 2>/dev/null)" == true ]] && opted=1
+  # roborev's own installed hook runs via ah_chain below; don't enqueue twice.
+  already=0
+  for h in "$top/.githooks/post-commit" "$common/hooks/post-commit"; do
+    [[ -x "$h" ]] && command grep -q roborev "$h" 2>/dev/null && already=1
+  done
+  if (( opted )) && (( ! already )); then
+    rb=$(command -v roborev 2>/dev/null || { [[ -x "$HOME/.local/bin/roborev" ]] && echo "$HOME/.local/bin/roborev"; } || true)
+    # Only enqueue into a daemon that is already running (launchd:
+    # com.roborev.daemon). `roborev post-commit` otherwise auto-spawns a daemon
+    # that inherits this hook's minimal env (no GEMINI_API_KEY etc.).
+    addr=${AGENT_HOOKS_ROBOREV_ADDR:-127.0.0.1:7373}
+    if [[ -n "$rb" ]] && ! (exec 3<>"/dev/tcp/${addr%:*}/${addr##*:}") 2>/dev/null; then
+      ah_log "roborev daemon not listening on $addr; not enqueuing (start it: launchctl kickstart gui/\$(id -u)/com.roborev.daemon)"
+    elif [[ -n "$rb" ]]; then
+      "$rb" post-commit </dev/null >/dev/null 2>&1 || ah_log "roborev post-commit exited $?"
+    fi
+  fi
+fi
+
+ah_chain "$@" || true
+exit 0

@@ -1,0 +1,7 @@
+{
+  "database": "dolt",
+  "backend": "dolt",
+  "dolt_mode": "embedded",
+  "dolt_database": "mdview",
+  "project_id": "b4bd6133-e432-4074-86c6-30b010e5ff0b"
+}

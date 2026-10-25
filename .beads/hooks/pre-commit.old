@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+# agent-hooks pre-commit: no commits on main/master, no real .env files, no secrets.
+# All three ALWAYS block (any mode); only AGENT_HOOKS_SKIP=1 (logged) bypasses.
+set -uo pipefail
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
+
+if ! ah_skipped; then
+  branch=$(ah_branch)
+  if ah_is_protected "$branch"; then
+    ah_violation_hard "committing directly on '$branch'." "Create a branch: git switch -c <agent>/<bead-id>-<slug>"
+  fi
+
+  env_files=$(git diff --cached --name-only --diff-filter=ACM \
+    | command grep -E '(^|/)\.env(\.[A-Za-z0-9_-]+)?$' \
+    | command grep -vE '\.env\.(example|sample|template|ci|test|dist)$' || true)
+  if [[ -n "$env_files" ]]; then
+    ah_violation_hard "staged env file(s): $(echo "$env_files" | tr '\n' ' ')" "Unstage with: git restore --staged <file>  (commit .env.example instead)"
+  fi
+
+  if command -v gitleaks >/dev/null 2>&1; then
+    # gitleaks >= 8.19 prefers `git --staged`; older uses `protect --staged`.
+    if gitleaks git --help >/dev/null 2>&1; then gl=(gitleaks git --staged --redact --no-banner --exit-code 1)
+    else gl=(gitleaks protect --staged --redact --no-banner --exit-code 1); fi
+    if ! "${gl[@]}" >/dev/null 2>&1; then
+      ah_violation_hard "gitleaks found a possible secret in the staged diff." "Inspect: ${gl[*]} -v"
+    fi
+  else
+    pattern='(AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----|sk_live_[0-9A-Za-z]{16,}|rk_live_[0-9A-Za-z]{16,}|whsec_[0-9A-Za-z]{24,}|gh[pousr]_[0-9A-Za-z]{30,}|github_pat_[0-9A-Za-z_]{40,}|xox[baprs]-[0-9A-Za-z-]{10,}|lin_api_[0-9A-Za-z]{30,}|sk-or-v1-[0-9a-f]{40,}|sk-(proj-|ant-)?[A-Za-z0-9_-]{40,})'
+    hits=$(git diff --cached -U0 --diff-filter=ACM | command grep -E '^\+[^+]' | command grep -cE "$pattern" || true)
+    if [[ "${hits:-0}" != 0 ]]; then
+      ah_violation_hard "built-in scan found $hits line(s) that look like secrets (install gitleaks for a better scan)."
+    fi
+  fi
+fi
+
+ah_own_status; own=$?
+ah_chain "$@"; chain=$?
+(( own != 0 )) && exit $own
+exit $chain

@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+# agent-hooks pre-push: light. No push to main/master, branch-name hint, a fast
+# lint of changed files when the tool is present. No Docker, no tests.
+set -uo pipefail
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
+
+AH_STDIN_FILE=$(mktemp "${TMPDIR:-/tmp}/agent-hooks-prepush.XXXXXX")
+trap 'rm -f "$AH_STDIN_FILE"' EXIT
+cat >"$AH_STDIN_FILE"
+zero=0000000000000000000000000000000000000000
+
+if ! ah_skipped; then
+  branch=$(ah_branch)
+  if [[ -n "$branch" ]] && ! ah_is_protected "$branch" && \
+     ! printf '%s' "$branch" | command grep -Eq '^(dependabot|renovate|release|gh-readonly-queue)/|^[a-z0-9-]+/[a-z0-9]+-[a-z0-9]+(\.[0-9]+)*-[a-z0-9._-]+$'; then
+    ah_info "branch '$branch' does not match <agent>/<bead-id>-<slug> (e.g. grok/opa-tkq5.3-slack-alerts)."
+  fi
+  while read -r _local_ref local_oid remote_ref remote_oid; do
+    [[ -z "${local_oid:-}" || "$local_oid" == "$zero" ]] && continue
+    case "$remote_ref" in
+      refs/heads/main|refs/heads/master) ah_violation "direct push to ${remote_ref#refs/heads/}." "Push a branch and open a PR." ;;
+    esac
+    if [[ "$remote_oid" == "$zero" ]]; then
+      base=$(git merge-base "$local_oid" origin/HEAD 2>/dev/null || git merge-base "$local_oid" origin/main 2>/dev/null || true)
+    else base=$remote_oid; fi
+    [[ -z "$base" ]] && continue
+    files=$(git diff --name-only --diff-filter=ACM "$base" "$local_oid" 2>/dev/null || true)
+    py=$(printf '%s\n' "$files" | command grep -E '\.py$' || true)
+    sh=$(printf '%s\n' "$files" | command grep -E '\.(sh|bash)$' || true)
+    top=$(git rev-parse --show-toplevel)
+    if [[ -n "$py" ]] && command -v ruff >/dev/null 2>&1; then
+      (cd "$top" && printf '%s\n' "$py" | xargs ruff check --quiet --force-exclude >/dev/null 2>&1) \
+        || ah_violation "ruff check failed on pushed Python files." "Run: ruff check \$(git diff --name-only $base $local_oid -- '*.py')"
+    fi
+    if [[ -n "$sh" ]] && command -v shellcheck >/dev/null 2>&1; then
+      (cd "$top" && printf '%s\n' "$sh" | xargs shellcheck -S error >/dev/null 2>&1) \
+        || ah_violation "shellcheck (errors only) failed on pushed shell files."
+    fi
+  done <"$AH_STDIN_FILE"
+fi
+
+ah_own_status; own=$?
+ah_chain "$@"; chain=$?
+(( own != 0 )) && exit $own
+exit $chain

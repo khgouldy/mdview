@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+# agent-hooks commit-msg: Conventional Commits subject; suggest Bead:/Agent: trailers.
+set -uo pipefail
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/common.sh"
+msg_file="${1:-}"
+
+if ! ah_skipped && [[ -f "$msg_file" ]]; then
+  subject=$(command grep -vE '^[[:space:]]*#' "$msg_file" | command grep -vE '^[[:space:]]*$' | head -n1 || true)
+  case "$subject" in
+    "Merge "*|"Revert "*|"fixup! "*|"squash! "*|"amend! "*|"Initial commit"*) : ;;
+    *)
+      re='^(feat|fix|perf|refactor|test|docs|chore|ci|build|revert|style)(\([A-Za-z0-9._/,-]+\))?!?: [^ ].{2,}'
+      if ! printf '%s' "$subject" | command grep -Eq "$re"; then
+        ah_violation "subject is not a Conventional Commit: \"$subject\"" "Use type(scope): summary. Types: feat fix perf refactor test docs chore ci build revert style"
+      elif (( ${#subject} > 72 )); then
+        ah_violation "subject is ${#subject} chars; keep it at most 72."
+      fi
+      body=$(command grep -vE '^[[:space:]]*#' "$msg_file")
+      printf '%s' "$body" | command grep -qE '^Bead:[[:space:]]*[^[:space:]]' || ah_info "no 'Bead:' trailer (e.g. Bead: opa-tkq5.3, or Bead: none for chore/docs/ci)."
+      printf '%s' "$body" | command grep -qE '^Agent:[[:space:]]*[^[:space:]]' || ah_info "no 'Agent:' trailer (claude-code | grok-build | pi | codex | human)."
+      ;;
+  esac
+fi
+
+ah_own_status; own=$?
+ah_chain "$@"; chain=$?
+(( own != 0 )) && exit $own
+exit $chain

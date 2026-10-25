@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+# agent-hooks post-checkout: no checks of its own; pass-through to the repo's hooks.
+set -uo pipefail
+# shellcheck source=../lib/passthrough.sh
+. "$(cd "$(dirname "$0")/.." && pwd)/lib/passthrough.sh"
