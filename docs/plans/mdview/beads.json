@@ -1,0 +1,457 @@
+{
+  "feature": "mdview",
+  "title": "mdview: a one-button, fully local iOS Markdown viewer",
+  "checks": ["make lint", "make test"],
+  "verify": "agent",
+  "open_questions": [
+    {
+      "question": "The repo is private, so macOS Actions minutes bill at 10x (a 12-minute run costs ~120 of the 2000 free minutes). Make the repo public under MIT so CI is free, or set a spending limit?",
+      "default": "Make it public under MIT; nothing sensitive lives in it."
+    },
+    {
+      "question": "Remote images: open the URL in Safari on tap (app never makes a network request) or fetch inline on tap?",
+      "default": "Tappable chip that opens Safari; the app process stays network-free."
+    },
+    {
+      "question": "Bundle identifier and Apple Team ID?",
+      "default": "us.par72.mdview; Team ID only in the gitignored Config/Local.xcconfig."
+    },
+    {
+      "question": "Body typeface: SF (system) or New York (serif)?",
+      "default": "SF system font; one theme constant flips it later, no in-app setting."
+    },
+    {
+      "question": "Register as a handler for plain-text (.txt) files too, or only Markdown?",
+      "default": "Only Markdown as a document type; the in-app picker may still select any text file."
+    },
+    {
+      "question": "Obsidian conveniences (front matter stripping, wikilinks, embeds, callouts) always on?",
+      "default": "Always on, no setting."
+    },
+    {
+      "question": "CI provider: GitHub Actions or Xcode Cloud (25 free hours/month with the paid developer program)?",
+      "default": "GitHub Actions; revisit Xcode Cloud only if minutes become the constraint."
+    },
+    {
+      "question": "Keep snapshot tests if they prove flaky?",
+      "default": "Keep with tolerance; drop to XCUITests only after two flaky failures post-fix."
+    },
+    {
+      "question": "Swift 6 language mode with strict concurrency everywhere?",
+      "default": "Yes; per-target fallback to Swift 5 mode only if a dependency forces it, recorded in docs/ARCHITECTURE.md."
+    },
+    {
+      "question": "Find-in-page placement: hidden pull-down search bar or a visible magnifier button?",
+      "default": "Hidden pull-down bar plus a bottom count bar only while searching, so the toggle stays the single visible control."
+    }
+  ],
+  "beads": [
+    {
+      "key": "B1",
+      "title": "Scaffold XcodeGen project, MarkdownKit package, Makefile and lint",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [],
+      "owned_paths": [
+        "project.yml",
+        "Makefile",
+        "Config/",
+        "Packages/MarkdownKit/Package.swift",
+        "App/mdview/mdviewApp.swift",
+        "App/mdview/ContentView.swift",
+        "App/mdview/Assets.xcassets/",
+        "App/mdviewUITests/LaunchTests.swift",
+        ".swiftformat",
+        ".swiftlint.yml",
+        ".gitignore",
+        "docs/DEVELOPMENT.md",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "description": "Create the skeleton every later bead builds on: an XcodeGen project.yml (iOS 17+, Swift 6, generated .xcodeproj gitignored), a local Swift package MarkdownKit with targets MarkdownModel, MarkdownViews, ReaderCore and three placeholder test bundles (platforms iOS 17 + macOS 14 so swift test runs on the Mac without a simulator), swift-markdown pinned as the only dependency, a thin @main SwiftUI app showing 'mdview', one XCUITest launch test, a Makefile (tools, gen, lint, format, test, build-ios, test-ios guarded to CI, open, clean), swiftformat/swiftlint config including the custom no_networking rule, and docs/DEVELOPMENT.md plus the build/test sections of CLAUDE.md and AGENTS.md. Verify and record the toolchain versions. Never boot a simulator locally.",
+      "acceptance": [
+        "`make lint` exits 0 and fails (non-zero) when a file containing `URLSession` is added under App/ or Packages/",
+        "`make test` exits 0: `swift test --package-path Packages/MarkdownKit` runs three test bundles and `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` succeeds with no DEVELOPMENT_TEAM set",
+        "`make test-ios` exits non-zero with an explanatory message when neither CI=true nor MDVIEW_ALLOW_SIMULATOR=1 is set",
+        "`git status` after `make gen` shows no untracked .xcodeproj or Config/Local.xcconfig (both gitignored)",
+        "docs/DEVELOPMENT.md lists the Xcode, Swift, xcodegen, swiftformat and swiftlint versions in use and the Makefile targets; CLAUDE.md and AGENTS.md no longer contain the placeholder 'Add your build and test commands' section"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B2",
+      "title": "Add GitHub Actions CI with device build and simulator tests",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B1"],
+      "owned_paths": [".github/workflows/", "README.md", "docs/DEVELOPMENT.md"],
+      "description": "Create .github/workflows/ci.yml: push trigger on all branches with docs path-ignore (no pull_request trigger), workflow_dispatch with a record_snapshots boolean, concurrency cancel-in-progress, 30-minute timeout, one job on a pinned macOS runner image with Xcode pinned via xcode-select, SwiftPM/DerivedData caching, steps make lint, make test, make test-ios (CI=true) against a simulator device/OS that exists on that image, xcresult upload on failure, snapshot artifact upload when recording. Extend make test-ios to pass TEST_RUNNER_SNAPSHOT_TESTING_RECORD=all when SNAPSHOT_RECORD=1 and to run tests non-parallel. Add a CI badge to README.md and a CI section (cost, record flow, gh run download) to docs/DEVELOPMENT.md. The macOS job must stay the only job and never run locally.",
+      "acceptance": [
+        ".github/workflows/ci.yml exists with triggers push (paths-ignore docs/** and **/*.md) and workflow_dispatch(record_snapshots), a concurrency group keyed on github.ref with cancel-in-progress, and timeout-minutes <= 30",
+        "After pushing the branch, `gh run list --branch <branch> --limit 1` shows a completed run with conclusion success that executed make lint, make test and make test-ios (LaunchTests pass on the simulator)",
+        "The workflow log contains the `xcrun simctl list devices available` diagnostic step and the device/OS used by make test-ios",
+        "docs/DEVELOPMENT.md documents the record_snapshots dispatch and `gh run download -n snapshots`, and README.md shows the CI badge"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B3",
+      "title": "Implement Markdown document model, parser facade and Obsidian preprocessing",
+      "type": "task",
+      "priority": 1,
+      "size": "L",
+      "model": "opus",
+      "effort": "high",
+      "depends_on": ["B1"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownModel/Model/",
+        "Packages/MarkdownKit/Sources/MarkdownModel/Parser/",
+        "Packages/MarkdownKit/Sources/MarkdownModel/Text/",
+        "Packages/MarkdownKit/Tests/MarkdownModelTests/",
+        "Packages/MarkdownKit/Tests/Fixtures/"
+      ],
+      "description": "Build the Sendable value model (MarkdownDocument, Block, Inline, ListItem, TableCell, ColumnAlignment, BlockID, RunID) and MarkdownParser, a pure synchronous facade over swift-markdown implemented as one MarkupVisitor that never leaks Markup types. Include YAML front matter stripping, Obsidian wikilinks/embeds/callouts applied to Inline.text nodes only, GitHub-style heading slugs with dedupe, pre-order BlockIDs, figure detection for image-only paragraphs, table padding, task-list checkboxes, and the canonical InlineText.flatten text rule that B5 and B12 must match verbatim. Add the fixtures gfm-kitchen-sink.md, obsidian-note.md and edge-cases.md and thorough XCTest coverage that runs on macOS via swift test.",
+      "acceptance": [
+        "`swift test --package-path Packages/MarkdownKit --filter MarkdownModelTests` passes with tests covering every Block and Inline case, front matter (with and without closing fence, CRLF), Obsidian wikilink/alias/heading/embed/callout conversion, a wikilink inside a code span left literal, slug dedupe, flatten rules, empty input, and BlockID uniqueness in pre-order",
+        "Parsing gfm-kitchen-sink.md yields a table whose rows all have the header's column count, a list item with checkbox true and one with false, a .figure block, and a heading with a non-empty slug",
+        "`grep -rn \"import Markdown\" Packages/MarkdownKit/Sources` matches only files under Sources/MarkdownModel/Parser/",
+        "A measure test parses a generated 500 KB document and logs the time; `make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B4",
+      "title": "Implement single-pass syntax highlighter with per-language grammars",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B3"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownModel/Highlighting/",
+        "Packages/MarkdownKit/Tests/MarkdownModelTests/Highlighting/"
+      ],
+      "description": "Add CodeHighlighter, Token, TokenKind and a data-driven Grammar type to MarkdownModel, with grammars for swift, objective-c, c/c++, python, javascript/typescript (+jsx/tsx aliases), json (keys as .attribute), bash/sh/zsh, yaml, toml, sql, go, rust, kotlin, java, ruby, html/xml, css, markdown, diff (+/- lines as .added/.removed), dockerfile and makefile. One forward O(n) scan, no regex, case-insensitive language lookup with common aliases, unknown/nil language or input above 20000 characters returns a single .plain token, tokens tile the input contiguously with no gaps or overlaps.",
+      "acceptance": [
+        "Golden tests exist for every grammar listed and pass under `swift test --filter Highlighting`",
+        "A test asserts for every fixture that tokens are contiguous, non-overlapping and cover the whole input",
+        "Tests assert alias resolution (js, ts, py, rb, yml, sh, zsh, console, shell) and that a 20001-character input yields exactly one .plain token",
+        "A measure test tokenizes a generated 10000-line Swift file and logs the time; `make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B5",
+      "title": "Build SwiftUI block renderer for text, headings, lists, quotes and links",
+      "type": "task",
+      "priority": 1,
+      "size": "L",
+      "model": "opus",
+      "effort": "high",
+      "depends_on": ["B3"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownViews/MarkdownView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/BlockView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/HeadingView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/ParagraphView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/ListView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/BlockQuoteView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/ThematicBreakView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/HTMLBlockView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Inline/InlineRenderer.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Theme/",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Previews/",
+        "Packages/MarkdownKit/Tests/MarkdownViewsTests/"
+      ],
+      "description": "Implement MarkdownView (ScrollViewReader + ScrollView + LazyVStack, measure 680 centered, scrollTarget binding), BlockView dispatch, heading/paragraph/list/quote/rule/html views, InlineRenderer producing an AttributedString whose characters equal InlineText.flatten exactly (with utf16 highlight ranges applied as background colour), MarkdownTheme with Dynamic Type text styles and @ScaledMetric spacing per plan section 3.5, environment keys imageLoader and markdownLinkHandler, task-list symbols, callout labels, accessibility header traits, and an openURL action that routes links through the handler. Code blocks, tables and images are temporary stubs (B6 replaces them). Everything must compile on macOS 14 too, because the local gate is swift test on the Mac.",
+      "acceptance": [
+        "A swift test parses every fixture and asserts String(InlineRenderer.attributedString(inlines).characters) == InlineText.flatten(inlines) for every text-bearing block",
+        "A test asserts that a highlight range on an inline list sets the background attribute on exactly the requested utf16 range and nowhere else",
+        "`swift test --package-path Packages/MarkdownKit` builds MarkdownViews on macOS and the MarkdownViewsTests bundle passes; `make test` (device build) passes",
+        "Headings expose .isHeader accessibility traits and H1–H6 map to the text styles listed in plan section 3.5 (unit test on MarkdownTheme.default)",
+        "SwiftUI previews exist for gfm-kitchen-sink.md and obsidian-note.md in light and dark"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B6",
+      "title": "Render code blocks with highlighting, scrollable tables and images",
+      "type": "task",
+      "priority": 1,
+      "size": "L",
+      "model": "sonnet",
+      "effort": "high",
+      "depends_on": ["B4", "B5"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/CodeBlockView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/TableView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/FigureView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Inline/InlineImageView.swift",
+        "Packages/MarkdownKit/Sources/MarkdownViews/Theme/CodePalette.swift",
+        "Packages/MarkdownKit/Tests/MarkdownViewsTests/"
+      ],
+      "description": "Replace the B5 stubs: CodeBlockView (rounded background, horizontal scroll instead of wrapping, monospaced 0.92x body, language label, CodeHighlighter tokens coloured by a light/dark CodePalette, plain text above 2000 lines, text selection), TableView (Grid in a horizontal ScrollView when wider than the measure, semibold header with rule, alternating rows, alignment, min column width 64, cells rendered via InlineRenderer with RunID(block, cell) and highlights passed through), FigureView and InlineImageView driven by the imageLoader environment: .data decodes off-main and renders scaledToFit (max height 480) with alt as accessibility label and title as caption; .remote shows a chip that opens the URL through markdownLinkHandler; .missing shows a placeholder chip; .needsFolderAccess shows an 'Allow access to <folder>' chip calling a new requestFolderAccess environment action. Keep macOS compiling.",
+      "acceptance": [
+        "Unit test: CodePalette returns a colour for every TokenKind in both light and dark schemes",
+        "Unit test: every TableCell in a parsed tables fixture gets a unique RunID with cell index set",
+        "Unit test: MarkdownView instantiates with a fake ImageLoading injected via the environment returning each ImageLoadResult case (.data, .remote, .missing, .needsFolderAccess)",
+        "`make lint` and `make test` pass (package tests on macOS, device build of the app)"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B7",
+      "title": "Build the reader screen with the Rendered / Source toggle",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B6"],
+      "owned_paths": [
+        "App/mdview/Reader/",
+        "App/mdview/Resources/Samples/",
+        "App/mdview/Support/LaunchArguments.swift",
+        "App/mdview/ContentView.swift",
+        "App/mdviewUITests/ReaderTests.swift"
+      ],
+      "description": "Add ReaderModel (@Observable, parses off the main actor, delayed ProgressView after 250 ms), ReaderMode persisted in UserDefaults key reader.mode, ReaderView (inline title = file name without extension, a single segmented Picker 'Rendered | Source' in the toolbar with identifiers reader.mode / reader.mode.rendered / reader.mode.source, no other toolbar items), SourceView as a read-only selectable UITextView with native find interaction and Dynamic Type monospaced font, link handling (fragment links scroll to the heading slug, relative .md links forwarded to an onOpenRelative closure, others to the system openURL), launch arguments -uiTesting and -openSample <name>, and the bundled Resources/Samples/Welcome.md that exercises headings, lists, a task list, a table, a code block and a quote. Temporarily point ContentView at the Welcome sample so the reader is reachable before B8/B9. Add XCUITest ReaderTests (runs only in CI).",
+      "acceptance": [
+        "XCUITest ReaderTests launches with `-uiTesting -openSample Welcome`, asserts the navigation title 'Welcome', switches to Source and finds a text view containing '# Welcome', switches back and finds the rendered heading; the CI run on the pushed branch is green (`gh run list`)",
+        "Switching modes does not re-parse (ReaderModel keeps the document; verified by a unit-testable counter or by code inspection noted in the bead report) and the chosen mode survives relaunch via UserDefaults key reader.mode",
+        "The reader toolbar contains exactly one control (the segmented picker) and a Back button; no other buttons",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B8",
+      "title": "Open Markdown files from Files, share sheet, picker and iPad drag-drop",
+      "type": "task",
+      "priority": 1,
+      "size": "L",
+      "model": "opus",
+      "effort": "high",
+      "depends_on": ["B7"],
+      "owned_paths": [
+        "project.yml",
+        "Packages/MarkdownKit/Sources/ReaderCore/Files/",
+        "Packages/MarkdownKit/Tests/ReaderCoreTests/FileOpenerTests.swift",
+        "App/mdview/App/",
+        "App/mdview/mdviewApp.swift",
+        "App/mdview/Files/FilePicker.swift",
+        "App/mdview/Files/DropHandling.swift"
+      ],
+      "description": "Register mdview as a Markdown handler (CFBundleDocumentTypes for net.daringfireball.markdown with an imported type declaration listing md/markdown/mdown/mkdn/mkd/mdwn, LSSupportsOpeningDocumentsInPlace true, UISupportsDocumentBrowser false, UIFileSharingEnabled true). Implement in ReaderCore: OpenedFile, FileOpenError, SecurityScope.withAccess, TextDecoding (UTF-8, UTF-16 BOM, Latin-1, CRLF normalised), and the FileOpener actor that reads inside the security scope, rejects files over 25 MB, creates a bookmark, and moves Documents/Inbox copies to Documents/Imported with unique names. In the app: AppRouter (NavigationStack path of OpenedFile, open(url:source:) with alert on error, replaces the path when a new file arrives), onOpenURL on the WindowGroup, FilePicker via fileImporter (markdown, plainText, text), and dropDestination for URLs on the root view. No UIKit in ReaderCore.",
+      "acceptance": [
+        "FileOpenerTests pass under swift test on macOS: UTF-8, UTF-16-with-BOM and Latin-1 files decode; CRLF becomes LF; a file under a simulated Inbox/ directory is moved to Imported/ with inboxCopy == true and a unique suffix on collision; a 30 MB file throws .tooLarge; a directory throws .unreadable; displayName strips the extension",
+        "The generated Info.plist (after make gen) contains CFBundleDocumentTypes with net.daringfireball.markdown, UTImportedTypeDeclarations with the listed extensions, LSSupportsOpeningDocumentsInPlace true and UISupportsDocumentBrowser false (verified with plutil -p or grep on the generated project output)",
+        "ReaderTests from B7 still pass in CI after the app entry point changes (`gh run list` shows success)",
+        "`make lint` and `make test` pass; `grep -rn UIKit Packages/MarkdownKit/Sources/ReaderCore` returns nothing"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B9",
+      "title": "Add recents store and the home screen",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B8"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/ReaderCore/Recents/",
+        "Packages/MarkdownKit/Tests/ReaderCoreTests/RecentsStoreTests.swift",
+        "App/mdview/Home/",
+        "App/mdview/ContentView.swift",
+        "App/mdviewUITests/HomeTests.swift"
+      ],
+      "description": "Implement RecentEntry, RecentsPersistence (JSON file in Application Support/mdview/recents.json written atomically, plus an in-memory variant for UI tests), and the @Observable RecentsStore (sorted by lastOpened, max 50, upsert by bookmark-resolved path, remove, resolve with stale-bookmark refresh and automatic removal of deleted files, corrupt JSON treated as empty, bundled samples never recorded). Replace ContentView with HomeView: large title 'mdview', List of RecentRow (icon, name, folder hint, relative date), swipe to remove, tap opens via AppRouter, a single 'Open…' toolbar button (identifier home.open) presenting the FilePicker, and an empty state with copy plus a 'Read the welcome guide' button that opens the bundled sample. -uiTesting uses the in-memory persistence. Add XCUITest HomeTests.",
+      "acceptance": [
+        "RecentsStoreTests pass on macOS: record/upsert/dedupe, cap at 50, remove, stale bookmark refresh after moving the file, deleted file drops the entry on resolve, corrupt JSON loads as empty, save/load round trip",
+        "XCUITest HomeTests (CI) launches with -uiTesting, finds home.open and the welcome button, opens the welcome guide, asserts title 'Welcome', navigates back and asserts the recents list is still empty; the CI run is green",
+        "ContentView.swift is deleted and HomeView is the root of the NavigationStack",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B10",
+      "title": "Resolve relative images with folder-access grants and open relative links",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B9"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/ReaderCore/Images/",
+        "Packages/MarkdownKit/Tests/ReaderCoreTests/FileImageLoaderTests.swift",
+        "App/mdview/Files/FolderAccessPrompt.swift"
+      ],
+      "description": "Implement FileImageLoader (ImageLoading) in ReaderCore: http(s) sources return .remote, data: URIs decode to .data, other sources resolve relative to the file's folder with Obsidian attachments/ and assets/ fallbacks for bare names, percent-decoding, a case-insensitive fallback scan for folders under 2000 entries, reads inside a granted folder's security scope when FolderAccessStore covers the URL, else inside the file's own scope; permission failures map to .needsFolderAccess(folder), not-found to .missing; only raster image extensions are attempted; SVG is .missing. Implement FolderAccessStore (granted folder bookmarks persisted like recents, deepest-prefix lookup). Wire ReaderView: imageLoader environment per file, requestFolderAccess presents a folder fileImporter and on grant bumps a reload token; inboxCopy files skip the prompt and show a 'not included when shared as a copy' caption; relative .md links from B7 resolve against the base folder and open through AppRouter.",
+      "acceptance": [
+        "FileImageLoaderTests pass on macOS with a temp folder (note.md, img/a.png, attachments/b.png): .data for img/a.png and for bare b.png, .missing for nope.png, .remote for an https URL, .data for a base64 data: URI, percent-encoded names resolve, and the error classifier maps permission errors to .needsFolderAccess and not-found to .missing",
+        "FolderAccessStore.folderCovering returns the deepest granted folder for a nested path and nil when none applies (unit test)",
+        "ReaderView sets an imageLoader for the current file and a requestFolderAccess action that presents a folder picker (code present and compiled by make test; behaviour described in the bead report)",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B11",
+      "title": "Polish typography, dark mode and Dynamic Type; add snapshot tests recorded in CI",
+      "type": "task",
+      "priority": 2,
+      "size": "L",
+      "model": "opus",
+      "effort": "high",
+      "depends_on": ["B10"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownViews/Theme/MarkdownTheme.swift",
+        "App/mdviewSnapshotTests/",
+        "project.yml",
+        "Makefile",
+        "docs/DEVELOPMENT.md",
+        "Packages/MarkdownKit/Tests/Fixtures/code-languages.md",
+        "Packages/MarkdownKit/Tests/Fixtures/tables.md"
+      ],
+      "description": "Do the visual pass against plan section 3.5 using previews (heading rhythm, list depths, quotes and callouts, inline code chip, code block padding and label, table rules, captions, link colour, iPad measure, landscape) and verify Dynamic Type at xSmall, large and accessibility3 with nothing truncated. Add the mdviewSnapshotTests unit-test target hosted by the app with pointfreeco/swift-snapshot-testing pinned to a release (test-only dependency), snapshots of gfm-kitchen-sink, obsidian-note, new fixtures code-languages.md and tables.md in light and dark, the kitchen sink at accessibility3 and xSmall, and HomeView empty and with three seeded recents, using precision 0.99 / perceptualPrecision 0.98 on a pinned device. Copy fixtures into the test bundle with a make sync-fixtures target and a lint diff check. Record references via the record_snapshots workflow_dispatch, download them with gh run download, commit them, and confirm the normal CI run passes. Never record snapshots locally.",
+      "acceptance": [
+        "project.yml defines mdviewSnapshotTests hosted by mdview and swift-snapshot-testing appears in Package.resolved pinned to a release tag; it is not linked into the app product",
+        "Reference images exist under App/mdviewSnapshotTests/__Snapshots__/ for every snapshot test listed and were produced by a record_snapshots CI run (run id noted in the bead report); the following normal CI run on the branch is green",
+        "`make lint` fails when a fixture copied into the snapshot test bundle differs from the package fixture (diff check), and passes after `make sync-fixtures`",
+        "Snapshot tests include light and dark variants and Dynamic Type xSmall and accessibility3 variants of the kitchen sink",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B12",
+      "title": "Add find in page with hidden search bar and match highlighting",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B11"],
+      "owned_paths": [
+        "Packages/MarkdownKit/Sources/MarkdownModel/Search/",
+        "Packages/MarkdownKit/Tests/MarkdownModelTests/SearchTests.swift",
+        "App/mdview/Reader/Find/",
+        "App/mdviewUITests/FindTests.swift"
+      ],
+      "description": "Implement DocumentSearch in MarkdownModel: text runs in document order built with InlineText.flatten (headings, paragraphs, list item blocks recursively, quote children, each table cell as its own RunID with cell index, code block strings, html blocks), case- and diacritic-insensitive non-overlapping matches as utf16 ranges, empty query returns nothing. In the reader: .searchable with navigationBarDrawer placement so the bar is hidden until pull-down, a bottom FindBar (find.count 'n of N', find.next, find.previous, wrap-around) shown only while a query is active, 150 ms debounce, off-main search above 200 KB, current match passed as currentHighlight with scrollTarget on its block, highlight colours from the theme applied through InlineRenderer, CodeBlockView and TableView. In Source mode forward to the UITextView find interaction or document that native find is available. Add XCUITest FindTests.",
+      "acceptance": [
+        "SearchTests pass on macOS: matches found in headings, paragraphs, list items, quotes, table cells (RunID.cell set) and code blocks of the kitchen sink; case and diacritic insensitivity; 'aaa' in 'aaaa' yields one match; empty query yields none",
+        "MarkdownViewsTests assert a highlight range renders inside a code block and inside a table cell",
+        "XCUITest FindTests (CI) opens the Welcome sample, reveals the search bar, types 'table', asserts find.count matches '1 of N' with N >= 1, taps find.next and asserts the count changed; the CI run is green",
+        "No new always-visible toolbar control is added to ReaderView (the segmented picker remains the only one)",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B13",
+      "title": "Prepare release: app icon, privacy manifest, versioning and RELEASE.md",
+      "type": "task",
+      "priority": 2,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B12"],
+      "owned_paths": [
+        "App/mdview/Assets.xcassets/AppIcon.appiconset/",
+        "App/mdview/PrivacyInfo.xcprivacy",
+        "scripts/",
+        "docs/RELEASE.md",
+        "README.md",
+        "project.yml"
+      ],
+      "description": "Generate and commit a 1024x1024 app icon (script under scripts/ plus the PNG) into the single-size AppIcon set, add PrivacyInfo.xcprivacy (no tracking, no collected data, UserDefaults reason CA92.1, file timestamp reason C617.1) as an app resource, set CFBundleDisplayName, MARKETING_VERSION 0.1.0, CURRENT_PROJECT_VERSION 1 and ITSAppUsesNonExemptEncryption NO in project.yml, and write docs/RELEASE.md as a hands-on checklist for keving: developer account options, Local.xcconfig team id, Xcode automatic signing and device install with Developer Mode, App Store Connect app record, archive and TestFlight upload, internal tester install, build expiry, and an on-device verification list. Refresh README.md with features, the fully-local statement and links to RELEASE.md and DEVELOPMENT.md.",
+      "acceptance": [
+        "`plutil -lint App/mdview/PrivacyInfo.xcprivacy` passes and the file declares NSPrivacyTracking false with the two accessed-API reasons",
+        "`sips -g pixelWidth -g pixelHeight` on the committed icon reports 1024 by 1024 and the asset catalog references it as the single-size iOS icon",
+        "docs/RELEASE.md contains the numbered steps for personal install and TestFlight and the on-device verification list; README.md links to it",
+        "`make lint` and `make test` pass with the icon and manifest included in the device build"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B14",
+      "title": "Write architecture docs and run the end-to-end review",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "opus",
+      "effort": "",
+      "depends_on": ["B13"],
+      "owned_paths": ["docs/ARCHITECTURE.md", "docs/DEVELOPMENT.md", "AGENTS.md", "CLAUDE.md", "README.md"],
+      "description": "Write docs/ARCHITECTURE.md (layout, module graph, data flow, updated decision table with pinned dependency versions and per-target Swift language mode, the flatten/renderer text invariant, the no-networking lint rule, CI and snapshot recording flow, performance baselines from the measure tests). Run the end-to-end checklist from plan section B14 and record each verification command and its result in the bead report: lint, package tests, CI green, XCUITests cover launch/home/reader/find, snapshot references present, no networking symbols outside tests, Package.resolved contains only the two intended dependency trees, Info.plist keys, privacy manifest, Dynamic Type snapshots, accessibility identifiers documented. Fix small defects found along the way; list anything larger as follow-up beads in the report.",
+      "acceptance": [
+        "docs/ARCHITECTURE.md exists with the sections listed and names the exact swift-markdown and swift-snapshot-testing versions from Package.resolved",
+        "`grep -rn \"URLSession\\|WKWebView\\|NWConnection\" App Packages --include=*.swift` returns no matches outside test targets",
+        "The latest CI run on the branch is green and its log shows LaunchTests, HomeTests, ReaderTests, FindTests and the snapshot bundle executed",
+        "docs/DEVELOPMENT.md lists every accessibility identifier used by the UI tests",
+        "`make lint` and `make test` pass"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B15",
+      "title": "Sign, install on iPhone and ship to TestFlight (human)",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": ["B14"],
+      "owned_paths": ["Config/Local.xcconfig"],
+      "description": "keving follows docs/RELEASE.md on his own Mac: put the Team ID into the gitignored Config/Local.xcconfig, open the project with make open, enable automatic signing, install on his iPhone (Developer Mode on), then create the App Store Connect record, archive, upload and install from TestFlight. He runs the on-device verification list (open from Files, share from another app, iPad drag-drop, dark mode, large text, a note with sibling images and the folder-access prompt) and files one bead per defect found. No bot action; the runner stops here and waits.",
+      "acceptance": [
+        "mdview runs on keving's iPhone from an Xcode install",
+        "A TestFlight build is available to the internal tester and installs",
+        "Each item of the on-device verification list in docs/RELEASE.md is marked pass or has a bead filed"
+      ],
+      "checks": [],
+      "no_code": true,
+      "needs_human": true
+    }
+  ]
+}
