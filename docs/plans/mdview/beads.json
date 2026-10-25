@@ -1,50 +1,12 @@
 {
   "feature": "mdview",
   "title": "mdview: a one-button, fully local iOS Markdown viewer",
-  "checks": ["make lint", "make test"],
-  "verify": "agent",
-  "open_questions": [
-    {
-      "question": "The repo is private, so macOS Actions minutes bill at 10x (a 12-minute run costs ~120 of the 2000 free minutes). Make the repo public under MIT so CI is free, or set a spending limit?",
-      "default": "Make it public under MIT; nothing sensitive lives in it."
-    },
-    {
-      "question": "Remote images: open the URL in Safari on tap (app never makes a network request) or fetch inline on tap?",
-      "default": "Tappable chip that opens Safari; the app process stays network-free."
-    },
-    {
-      "question": "Bundle identifier and Apple Team ID?",
-      "default": "us.par72.mdview; Team ID only in the gitignored Config/Local.xcconfig."
-    },
-    {
-      "question": "Body typeface: SF (system) or New York (serif)?",
-      "default": "SF system font; one theme constant flips it later, no in-app setting."
-    },
-    {
-      "question": "Register as a handler for plain-text (.txt) files too, or only Markdown?",
-      "default": "Only Markdown as a document type; the in-app picker may still select any text file."
-    },
-    {
-      "question": "Obsidian conveniences (front matter stripping, wikilinks, embeds, callouts) always on?",
-      "default": "Always on, no setting."
-    },
-    {
-      "question": "CI provider: GitHub Actions or Xcode Cloud (25 free hours/month with the paid developer program)?",
-      "default": "GitHub Actions; revisit Xcode Cloud only if minutes become the constraint."
-    },
-    {
-      "question": "Keep snapshot tests if they prove flaky?",
-      "default": "Keep with tolerance; drop to XCUITests only after two flaky failures post-fix."
-    },
-    {
-      "question": "Swift 6 language mode with strict concurrency everywhere?",
-      "default": "Yes; per-target fallback to Swift 5 mode only if a dependency forces it, recorded in docs/ARCHITECTURE.md."
-    },
-    {
-      "question": "Find-in-page placement: hidden pull-down search bar or a visible magnifier button?",
-      "default": "Hidden pull-down bar plus a bottom count bar only while searching, so the toggle stays the single visible control."
-    }
+  "checks": [
+    "make lint",
+    "make test"
   ],
+  "verify": "agent",
+  "open_questions": [],
   "beads": [
     {
       "key": "B1",
@@ -71,13 +33,14 @@
         "AGENTS.md",
         "CLAUDE.md"
       ],
-      "description": "Create the skeleton every later bead builds on: an XcodeGen project.yml (iOS 17+, Swift 6, generated .xcodeproj gitignored), a local Swift package MarkdownKit with targets MarkdownModel, MarkdownViews, ReaderCore and three placeholder test bundles (platforms iOS 17 + macOS 14 so swift test runs on the Mac without a simulator), swift-markdown pinned as the only dependency, a thin @main SwiftUI app showing 'mdview', one XCUITest launch test, a Makefile (tools, gen, lint, format, test, build-ios, test-ios guarded to CI, open, clean), swiftformat/swiftlint config including the custom no_networking rule, and docs/DEVELOPMENT.md plus the build/test sections of CLAUDE.md and AGENTS.md. Verify and record the toolchain versions. Never boot a simulator locally.",
+      "description": "Create the skeleton every later bead builds on: an XcodeGen project.yml (iOS 17+, Swift 6, generated .xcodeproj gitignored), a local Swift package MarkdownKit with targets MarkdownModel, MarkdownViews, ReaderCore and three placeholder test bundles (platforms iOS 17 + macOS 14 so swift test runs on the Mac without a simulator), swift-markdown pinned as the only dependency, a thin @main SwiftUI app showing 'mdview', one XCUITest launch test, a Makefile (tools, gen, lint, format, test, build-ios, test-ios guarded to CI, open, clean), swiftformat/swiftlint config including the custom no_networking rule, and docs/DEVELOPMENT.md plus the build/test sections of CLAUDE.md and AGENTS.md. Verify and record the toolchain versions. Never boot a simulator locally. Config/Local.xcconfig.example sets PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview and leaves DEVELOPMENT_TEAM empty (an unset build setting keving fills in at B15); never look up or commit Apple account details.",
       "acceptance": [
         "`make lint` exits 0 and fails (non-zero) when a file containing `URLSession` is added under App/ or Packages/",
         "`make test` exits 0: `swift test --package-path Packages/MarkdownKit` runs three test bundles and `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` succeeds with no DEVELOPMENT_TEAM set",
         "`make test-ios` exits non-zero with an explanatory message when neither CI=true nor MDVIEW_ALLOW_SIMULATOR=1 is set",
         "`git status` after `make gen` shows no untracked .xcodeproj or Config/Local.xcconfig (both gitignored)",
-        "docs/DEVELOPMENT.md lists the Xcode, Swift, xcodegen, swiftformat and swiftlint versions in use and the Makefile targets; CLAUDE.md and AGENTS.md no longer contain the placeholder 'Add your build and test commands' section"
+        "docs/DEVELOPMENT.md lists the Xcode, Swift, xcodegen, swiftformat and swiftlint versions in use and the Makefile targets; CLAUDE.md and AGENTS.md no longer contain the placeholder 'Add your build and test commands' section",
+        "Config/Local.xcconfig.example contains `PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview` and an empty `DEVELOPMENT_TEAM =` line (no Team ID anywhere in the repo)"
       ],
       "checks": [],
       "no_code": false,
@@ -91,9 +54,15 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B1"],
-      "owned_paths": [".github/workflows/", "README.md", "docs/DEVELOPMENT.md"],
-      "description": "Create .github/workflows/ci.yml: push trigger on all branches with docs path-ignore (no pull_request trigger), workflow_dispatch with a record_snapshots boolean, concurrency cancel-in-progress, 30-minute timeout, one job on a pinned macOS runner image with Xcode pinned via xcode-select, SwiftPM/DerivedData caching, steps make lint, make test, make test-ios (CI=true) against a simulator device/OS that exists on that image, xcresult upload on failure, snapshot artifact upload when recording. Extend make test-ios to pass TEST_RUNNER_SNAPSHOT_TESTING_RECORD=all when SNAPSHOT_RECORD=1 and to run tests non-parallel. Add a CI badge to README.md and a CI section (cost, record flow, gh run download) to docs/DEVELOPMENT.md. The macOS job must stay the only job and never run locally.",
+      "depends_on": [
+        "B1"
+      ],
+      "owned_paths": [
+        ".github/workflows/",
+        "README.md",
+        "docs/DEVELOPMENT.md"
+      ],
+      "description": "Create .github/workflows/ci.yml: push trigger on all branches with docs path-ignore (no pull_request trigger), workflow_dispatch with a record_snapshots boolean, concurrency cancel-in-progress, 30-minute timeout, one job on a pinned macOS runner image with Xcode pinned via xcode-select, SwiftPM/DerivedData caching, steps make lint, make test, make test-ios (CI=true) against a simulator device/OS that exists on that image, xcresult upload on failure, snapshot artifact upload when recording. Extend make test-ios to pass TEST_RUNNER_SNAPSHOT_TESTING_RECORD=all when SNAPSHOT_RECORD=1 and to run tests non-parallel. Add a CI badge to README.md and a CI section (cost: free because the repo is public under MIT; record flow; gh run download) to docs/DEVELOPMENT.md. The macOS job must stay the only job and never run locally.",
       "acceptance": [
         ".github/workflows/ci.yml exists with triggers push (paths-ignore docs/** and **/*.md) and workflow_dispatch(record_snapshots), a concurrency group keyed on github.ref with cancel-in-progress, and timeout-minutes <= 30",
         "After pushing the branch, `gh run list --branch <branch> --limit 1` shows a completed run with conclusion success that executed make lint, make test and make test-ios (LaunchTests pass on the simulator)",
@@ -112,7 +81,9 @@
       "size": "L",
       "model": "opus",
       "effort": "high",
-      "depends_on": ["B1"],
+      "depends_on": [
+        "B1"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownModel/Model/",
         "Packages/MarkdownKit/Sources/MarkdownModel/Parser/",
@@ -139,7 +110,9 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B3"],
+      "depends_on": [
+        "B3"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownModel/Highlighting/",
         "Packages/MarkdownKit/Tests/MarkdownModelTests/Highlighting/"
@@ -163,7 +136,9 @@
       "size": "L",
       "model": "opus",
       "effort": "high",
-      "depends_on": ["B3"],
+      "depends_on": [
+        "B3"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownViews/MarkdownView.swift",
         "Packages/MarkdownKit/Sources/MarkdownViews/BlockView.swift",
@@ -198,7 +173,10 @@
       "size": "L",
       "model": "sonnet",
       "effort": "high",
-      "depends_on": ["B4", "B5"],
+      "depends_on": [
+        "B4",
+        "B5"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/CodeBlockView.swift",
         "Packages/MarkdownKit/Sources/MarkdownViews/Blocks/TableView.swift",
@@ -226,7 +204,9 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B6"],
+      "depends_on": [
+        "B6"
+      ],
       "owned_paths": [
         "App/mdview/Reader/",
         "App/mdview/Resources/Samples/",
@@ -247,13 +227,15 @@
     },
     {
       "key": "B8",
-      "title": "Open Markdown files from Files, share sheet, picker and iPad drag-drop",
+      "title": "Open Markdown and .txt files from Files, share sheet, picker and iPad drag-drop",
       "type": "task",
       "priority": 1,
       "size": "L",
       "model": "opus",
       "effort": "high",
-      "depends_on": ["B7"],
+      "depends_on": [
+        "B7"
+      ],
       "owned_paths": [
         "project.yml",
         "Packages/MarkdownKit/Sources/ReaderCore/Files/",
@@ -261,12 +243,14 @@
         "App/mdview/App/",
         "App/mdview/mdviewApp.swift",
         "App/mdview/Files/FilePicker.swift",
-        "App/mdview/Files/DropHandling.swift"
+        "App/mdview/Files/DropHandling.swift",
+        "App/mdview/Reader/ReaderView.swift"
       ],
-      "description": "Register mdview as a Markdown handler (CFBundleDocumentTypes for net.daringfireball.markdown with an imported type declaration listing md/markdown/mdown/mkdn/mkd/mdwn, LSSupportsOpeningDocumentsInPlace true, UISupportsDocumentBrowser false, UIFileSharingEnabled true). Implement in ReaderCore: OpenedFile, FileOpenError, SecurityScope.withAccess, TextDecoding (UTF-8, UTF-16 BOM, Latin-1, CRLF normalised), and the FileOpener actor that reads inside the security scope, rejects files over 25 MB, creates a bookmark, and moves Documents/Inbox copies to Documents/Imported with unique names. In the app: AppRouter (NavigationStack path of OpenedFile, open(url:source:) with alert on error, replaces the path when a new file arrives), onOpenURL on the WindowGroup, FilePicker via fileImporter (markdown, plainText, text), and dropDestination for URLs on the root view. No UIKit in ReaderCore.",
+      "description": "Register mdview as a Markdown handler (CFBundleDocumentTypes for net.daringfireball.markdown with an imported type declaration listing md/markdown/mdown/mkdn/mkd/mdwn, LSSupportsOpeningDocumentsInPlace true, UISupportsDocumentBrowser false, UIFileSharingEnabled true), plus a second CFBundleDocumentTypes entry (Plain Text, LSHandlerRank Alternate, public.plain-text) so .txt files open too (decision D5). Implement in ReaderCore: OpenedFile, FileOpenError, SecurityScope.withAccess, TextDecoding (UTF-8, UTF-16 BOM, Latin-1, CRLF normalised), and the FileOpener actor that reads inside the security scope, rejects files over 25 MB, creates a bookmark, and moves Documents/Inbox copies to Documents/Imported with unique names. In the app: AppRouter (NavigationStack path of OpenedFile, open(url:source:) with alert on error, replaces the path when a new file arrives), onOpenURL on the WindowGroup, FilePicker via fileImporter (markdown, plainText, text), and dropDestination for URLs on the root view. No UIKit in ReaderCore. Plain text (D5): OpenedFile gains kind (.markdown / .plainText, from the extension: txt and text are .plainText); ReaderView shows a .plainText file in SourceView only, never parses it as Markdown, and hides the Rendered / Source picker for it without changing the stored reader.mode.",
       "acceptance": [
-        "FileOpenerTests pass under swift test on macOS: UTF-8, UTF-16-with-BOM and Latin-1 files decode; CRLF becomes LF; a file under a simulated Inbox/ directory is moved to Imported/ with inboxCopy == true and a unique suffix on collision; a 30 MB file throws .tooLarge; a directory throws .unreadable; displayName strips the extension",
+        "FileOpenerTests pass under swift test on macOS: UTF-8, UTF-16-with-BOM and Latin-1 files decode; CRLF becomes LF; a file under a simulated Inbox/ directory is moved to Imported/ with inboxCopy == true and a unique suffix on collision; a 30 MB file throws .tooLarge; a directory throws .unreadable; displayName strips the extension; a .txt file opens with kind .plainText and a .md file with kind .markdown",
         "The generated Info.plist (after make gen) contains CFBundleDocumentTypes with net.daringfireball.markdown, UTImportedTypeDeclarations with the listed extensions, LSSupportsOpeningDocumentsInPlace true and UISupportsDocumentBrowser false (verified with plutil -p or grep on the generated project output)",
+        "The generated Info.plist also has a CFBundleDocumentTypes entry for public.plain-text with LSHandlerRank Alternate, and ReaderView renders .plainText files in SourceView with no mode picker (code present, compiled by make test, described in the bead report)",
         "ReaderTests from B7 still pass in CI after the app entry point changes (`gh run list` shows success)",
         "`make lint` and `make test` pass; `grep -rn UIKit Packages/MarkdownKit/Sources/ReaderCore` returns nothing"
       ],
@@ -282,7 +266,9 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B8"],
+      "depends_on": [
+        "B8"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/ReaderCore/Recents/",
         "Packages/MarkdownKit/Tests/ReaderCoreTests/RecentsStoreTests.swift",
@@ -309,7 +295,9 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B9"],
+      "depends_on": [
+        "B9"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/ReaderCore/Images/",
         "Packages/MarkdownKit/Tests/ReaderCoreTests/FileImageLoaderTests.swift",
@@ -334,7 +322,9 @@
       "size": "L",
       "model": "opus",
       "effort": "high",
-      "depends_on": ["B10"],
+      "depends_on": [
+        "B10"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownViews/Theme/MarkdownTheme.swift",
         "App/mdviewSnapshotTests/",
@@ -342,9 +332,10 @@
         "Makefile",
         "docs/DEVELOPMENT.md",
         "Packages/MarkdownKit/Tests/Fixtures/code-languages.md",
-        "Packages/MarkdownKit/Tests/Fixtures/tables.md"
+        "Packages/MarkdownKit/Tests/Fixtures/tables.md",
+        ".github/workflows/"
       ],
-      "description": "Do the visual pass against plan section 3.5 using previews (heading rhythm, list depths, quotes and callouts, inline code chip, code block padding and label, table rules, captions, link colour, iPad measure, landscape) and verify Dynamic Type at xSmall, large and accessibility3 with nothing truncated. Add the mdviewSnapshotTests unit-test target hosted by the app with pointfreeco/swift-snapshot-testing pinned to a release (test-only dependency), snapshots of gfm-kitchen-sink, obsidian-note, new fixtures code-languages.md and tables.md in light and dark, the kitchen sink at accessibility3 and xSmall, and HomeView empty and with three seeded recents, using precision 0.99 / perceptualPrecision 0.98 on a pinned device. Copy fixtures into the test bundle with a make sync-fixtures target and a lint diff check. Record references via the record_snapshots workflow_dispatch, download them with gh run download, commit them, and confirm the normal CI run passes. Never record snapshots locally.",
+      "description": "Do the visual pass against plan section 3.5 using previews (heading rhythm, list depths, quotes and callouts, inline code chip, code block padding and label, table rules, captions, link colour, iPad measure, landscape) and verify Dynamic Type at xSmall, large and accessibility3 with nothing truncated. Add the mdviewSnapshotTests unit-test target hosted by the app with pointfreeco/swift-snapshot-testing pinned to a release (test-only dependency), snapshots of gfm-kitchen-sink, obsidian-note, new fixtures code-languages.md and tables.md in light and dark, the kitchen sink at accessibility3 and xSmall, and HomeView empty and with three seeded recents, using precision 0.99 / perceptualPrecision 0.98 on a pinned device. Copy fixtures into the test bundle with a make sync-fixtures target and a lint diff check. Record references via the record_snapshots workflow_dispatch, download them with gh run download, commit them, and confirm the normal CI run passes. Never record snapshots locally. Flakiness (decision D8): if snapshots still flake after two fix attempts, do not delete them; move the snapshot bundle to its own scheme or test plan run by a separate non-blocking CI job (continue-on-error: true) and keep XCUITests in the required job; document it in docs/DEVELOPMENT.md.",
       "acceptance": [
         "project.yml defines mdviewSnapshotTests hosted by mdview and swift-snapshot-testing appears in Package.resolved pinned to a release tag; it is not linked into the app product",
         "Reference images exist under App/mdviewSnapshotTests/__Snapshots__/ for every snapshot test listed and were produced by a record_snapshots CI run (run id noted in the bead report); the following normal CI run on the branch is green",
@@ -364,7 +355,9 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B11"],
+      "depends_on": [
+        "B11"
+      ],
       "owned_paths": [
         "Packages/MarkdownKit/Sources/MarkdownModel/Search/",
         "Packages/MarkdownKit/Tests/MarkdownModelTests/SearchTests.swift",
@@ -391,7 +384,9 @@
       "size": "S",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B12"],
+      "depends_on": [
+        "B12"
+      ],
       "owned_paths": [
         "App/mdview/Assets.xcassets/AppIcon.appiconset/",
         "App/mdview/PrivacyInfo.xcprivacy",
@@ -400,11 +395,11 @@
         "README.md",
         "project.yml"
       ],
-      "description": "Generate and commit a 1024x1024 app icon (script under scripts/ plus the PNG) into the single-size AppIcon set, add PrivacyInfo.xcprivacy (no tracking, no collected data, UserDefaults reason CA92.1, file timestamp reason C617.1) as an app resource, set CFBundleDisplayName, MARKETING_VERSION 0.1.0, CURRENT_PROJECT_VERSION 1 and ITSAppUsesNonExemptEncryption NO in project.yml, and write docs/RELEASE.md as a hands-on checklist for keving: developer account options, Local.xcconfig team id, Xcode automatic signing and device install with Developer Mode, App Store Connect app record, archive and TestFlight upload, internal tester install, build expiry, and an on-device verification list. Refresh README.md with features, the fully-local statement and links to RELEASE.md and DEVELOPMENT.md.",
+      "description": "Generate and commit a 1024x1024 app icon (script under scripts/ plus the PNG) into the single-size AppIcon set, add PrivacyInfo.xcprivacy (no tracking, no collected data, UserDefaults reason CA92.1, file timestamp reason C617.1) as an app resource, set CFBundleDisplayName, MARKETING_VERSION 0.1.0, CURRENT_PROJECT_VERSION 1 and ITSAppUsesNonExemptEncryption NO in project.yml, and write docs/RELEASE.md as a hands-on checklist for keving: developer account options, filling the empty DEVELOPMENT_TEAM in Local.xcconfig (bundle id us.par72.mdview), Xcode automatic signing and device install with Developer Mode, App Store Connect app record, archive and TestFlight upload, internal tester install, build expiry, and an on-device verification list. Refresh README.md (B13 owns the README rewrite; B14 only adds to it) with features (including .txt shown as plain text), the fully-local statement, a License section (MIT, see LICENSE), the CI badge from B2, and links to RELEASE.md and DEVELOPMENT.md.",
       "acceptance": [
         "`plutil -lint App/mdview/PrivacyInfo.xcprivacy` passes and the file declares NSPrivacyTracking false with the two accessed-API reasons",
         "`sips -g pixelWidth -g pixelHeight` on the committed icon reports 1024 by 1024 and the asset catalog references it as the single-size iOS icon",
-        "docs/RELEASE.md contains the numbered steps for personal install and TestFlight and the on-device verification list; README.md links to it",
+        "docs/RELEASE.md contains the numbered steps for personal install and TestFlight and the on-device verification list; README.md links to it and has a License section pointing at LICENSE (MIT)",
         "`make lint` and `make test` pass with the icon and manifest included in the device build"
       ],
       "checks": [],
@@ -419,9 +414,17 @@
       "size": "M",
       "model": "opus",
       "effort": "",
-      "depends_on": ["B13"],
-      "owned_paths": ["docs/ARCHITECTURE.md", "docs/DEVELOPMENT.md", "AGENTS.md", "CLAUDE.md", "README.md"],
-      "description": "Write docs/ARCHITECTURE.md (layout, module graph, data flow, updated decision table with pinned dependency versions and per-target Swift language mode, the flatten/renderer text invariant, the no-networking lint rule, CI and snapshot recording flow, performance baselines from the measure tests). Run the end-to-end checklist from plan section B14 and record each verification command and its result in the bead report: lint, package tests, CI green, XCUITests cover launch/home/reader/find, snapshot references present, no networking symbols outside tests, Package.resolved contains only the two intended dependency trees, Info.plist keys, privacy manifest, Dynamic Type snapshots, accessibility identifiers documented. Fix small defects found along the way; list anything larger as follow-up beads in the report.",
+      "depends_on": [
+        "B13"
+      ],
+      "owned_paths": [
+        "docs/ARCHITECTURE.md",
+        "docs/DEVELOPMENT.md",
+        "AGENTS.md",
+        "CLAUDE.md",
+        "README.md"
+      ],
+      "description": "Write docs/ARCHITECTURE.md (layout, module graph, data flow, updated decision table with pinned dependency versions and per-target Swift language mode, the flatten/renderer text invariant, the no-networking lint rule, CI and snapshot recording flow, performance baselines from the measure tests). Run the end-to-end checklist from plan section B14 and record each verification command and its result in the bead report: lint, package tests, CI green, XCUITests cover launch/home/reader/find, snapshot references present, no networking symbols outside tests, Package.resolved contains only the two intended dependency trees, Info.plist keys, privacy manifest, Dynamic Type snapshots, accessibility identifiers documented. Fix small defects found along the way; list anything larger as follow-up beads in the report. README.md: start from B13's version (B14 depends on B13); only add a link to docs/ARCHITECTURE.md and correct facts the review finds, do not rewrite it.",
       "acceptance": [
         "docs/ARCHITECTURE.md exists with the sections listed and names the exact swift-markdown and swift-snapshot-testing versions from Package.resolved",
         "`grep -rn \"URLSession\\|WKWebView\\|NWConnection\" App Packages --include=*.swift` returns no matches outside test targets",
@@ -441,9 +444,13 @@
       "size": "M",
       "model": "sonnet",
       "effort": "",
-      "depends_on": ["B14"],
-      "owned_paths": ["Config/Local.xcconfig"],
-      "description": "keving follows docs/RELEASE.md on his own Mac: put the Team ID into the gitignored Config/Local.xcconfig, open the project with make open, enable automatic signing, install on his iPhone (Developer Mode on), then create the App Store Connect record, archive, upload and install from TestFlight. He runs the on-device verification list (open from Files, share from another app, iPad drag-drop, dark mode, large text, a note with sibling images and the folder-access prompt) and files one bead per defect found. No bot action; the runner stops here and waits.",
+      "depends_on": [
+        "B14"
+      ],
+      "owned_paths": [
+        "Config/Local.xcconfig"
+      ],
+      "description": "keving follows docs/RELEASE.md on his own Mac: fill the unset DEVELOPMENT_TEAM (his Team ID) into the gitignored Config/Local.xcconfig, open the project with make open, enable automatic signing, install on his iPhone (Developer Mode on), then create the App Store Connect record, archive, upload and install from TestFlight. He runs the on-device verification list (open from Files, share from another app, iPad drag-drop, dark mode, large text, a note with sibling images and the folder-access prompt) and files one bead per defect found. No bot action; the runner stops here and waits.",
       "acceptance": [
         "mdview runs on keving's iPhone from an Xcode install",
         "A TestFlight build is available to the internal tester and installs",
@@ -452,6 +459,58 @@
       "checks": [],
       "no_code": true,
       "needs_human": true
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "by": "keving",
+      "decision": "Repo public under MIT (LICENSE: 2026 Kevin Gould / Par72 Labs, LLC); gitleaks full-history scan before the flip; Actions macOS minutes free."
+    },
+    {
+      "id": "D2",
+      "by": "decided for keving",
+      "decision": "Remote images open in Safari on tap; never loaded inline; app stays network-free."
+    },
+    {
+      "id": "D3",
+      "by": "decided for keving",
+      "decision": "Bundle id us.par72.mdview; DEVELOPMENT_TEAM stays an unset build setting that keving fills in at B15."
+    },
+    {
+      "id": "D4",
+      "by": "keving",
+      "decision": "System SF font (default)."
+    },
+    {
+      "id": "D5",
+      "by": "decided for keving",
+      "decision": "Open .txt files too (Alternate handler for public.plain-text), shown as plain source text with no toggle."
+    },
+    {
+      "id": "D6",
+      "by": "decided for keving",
+      "decision": "Obsidian extras always on, no settings toggle."
+    },
+    {
+      "id": "D7",
+      "by": "decided for keving",
+      "decision": "GitHub Actions CI."
+    },
+    {
+      "id": "D8",
+      "by": "decided for keving",
+      "decision": "Keep snapshot tests; if flaky after two fixes, move them to a non-blocking CI job instead of deleting."
+    },
+    {
+      "id": "D9",
+      "by": "decided for keving",
+      "decision": "Swift 6 strict concurrency."
+    },
+    {
+      "id": "D10",
+      "by": "decided for keving",
+      "decision": "Find-in-page via pull-down .searchable bar."
     }
   ]
 }

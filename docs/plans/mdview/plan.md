@@ -11,7 +11,7 @@ toggle. The home screen is a recent-files list. Find-in-page is included because
 chosen architecture. Everything is local: no network, no telemetry, no SDKs that phone home.
 
 **Non-goals.** Editing, sync, accounts, cloud, analytics, any network access by the app process (remote images are
-not fetched; see open question 2), Android, macOS/Catalyst, App Store release (TestFlight is the ceiling), settings
+not fetched; see decision D2), Android, macOS/Catalyst, App Store release (TestFlight is the ceiling), settings
 screens, themes, fonts pickers. Footnotes and math are not rendered (shown as plain text).
 
 **Who it is for.** keving reads reports, plans and bot output plus Obsidian vault notes on an iPhone. Obsidian
@@ -26,8 +26,8 @@ commands yet; bead B1 creates them and documents them.
 
 Facts that shape the plan:
 
-- The GitHub repo `khgouldy/mdview` is **private**. GitHub-hosted macOS runners bill at a 10x minute multiplier,
-  so simulator CI is budgeted and gated (section 4, open question 1).
+- The GitHub repo `khgouldy/mdview` is **public under the MIT license** (decision D1, `LICENSE` at the repo root),
+  so GitHub-hosted macOS runners cost nothing. CI still stays lean (one job, push-only, path-filtered).
 - Bots must never boot the iOS Simulator on keving's Mac. The local quality gate therefore consists only of
   macOS-native `swift test` for the Swift package plus a device-SDK `xcodebuild build` with signing disabled, which
   compiles the app without any simulator. Simulator tests (XCUITest, snapshots) run only in GitHub Actions.
@@ -168,10 +168,10 @@ public struct FileImageLoader: ImageLoading { init(baseURL: URL?, folderAccess: 
 | Syntax highlighting | **Own single-pass tokenizer** with small per-language grammars (keywords, comments, strings, numbers) | Highlightr (JavaScriptCore + highlight.js, ~1 MB, JS context spin-up on first code block); tree-sitter (binary grammars, build complexity). |
 | Find-in-page | Hidden pull-down search bar (`.searchable` navigation-bar drawer) so the one visible control stays the toggle; matches highlighted via `AttributedString` ranges; `UIFindInteraction` in Source mode | Visible magnifier button (second control); skipping find (it is cheap because `InlineText.flatten` and `InlineRenderer` share one text rule). |
 | Text-rule invariant | `String(InlineRenderer.attributedString(inlines).characters) == InlineText.flatten(inlines)` for every inline list. A `swift test` enforces it, so search offsets map 1:1 onto rendered text. | Separate plain-text extraction (offsets drift the moment someone changes a renderer rule). |
-| Images | `ImageLoading` protocol; file images loaded from the file's folder; remote image URLs rendered as a tappable chip that opens Safari | Fetching on tap inside the app (makes the process network-capable; open question 2). |
+| Images | `ImageLoading` protocol; file images loaded from the file's folder; remote image URLs rendered as a tappable chip that opens Safari | Fetching on tap inside the app (makes the process network-capable; rejected in decision D2). |
 | Recents | JSON of security-scoped bookmarks in Application Support, max 50 | `UIDocumentBrowserViewController` / `DocumentGroup` home (system chrome, not "no clutter", recents not customizable); UserDefaults (fine for size, but no room for migration). |
 | Concurrency | Swift 6 language mode, strict concurrency | Swift 5 mode (defer the pain). Fallback: if a dependency blocks mode 6 in a target, set that target to 5 and note it in `docs/ARCHITECTURE.md`. |
-| Signing config | `DEVELOPMENT_TEAM` and bundle id from gitignored `Config/Local.xcconfig`; CI builds with `CODE_SIGNING_ALLOWED=NO` | Team id in `project.yml` (leaks across machines, blocks CI). |
+| Signing config | Bundle id `us.par72.mdview`; `DEVELOPMENT_TEAM` is left unset in the repo (empty in `Config/Local.xcconfig.example`) and keving fills it into the gitignored `Config/Local.xcconfig` at B15; CI builds with `CODE_SIGNING_ALLOWED=NO` | Team id in `project.yml` (leaks across machines, blocks CI). |
 | "No network" enforcement | SwiftLint custom rule that fails on `URLSession`, `NWConnection`, `WKWebView`, `CFNetwork`, `NSURLConnection`, `URLSessionConfiguration` anywhere in `App/` and `Packages/`; `PrivacyInfo.xcprivacy` declares no tracking | Trusting code review. |
 
 ### 3.5 Typography defaults (B5/B11 implement, B11 may tune)
@@ -187,13 +187,13 @@ sizes come from text styles or `@ScaledMetric`, so Dynamic Type scales everythin
 
 | Risk | Containment |
 |---|---|
-| Simulator CI cost on a private repo (10x minutes) | CI runs on `push` only (no duplicate `pull_request` runs), path-filtered, `concurrency: cancel-in-progress`, 30-min timeout, one job. Local gate catches most failures before CI. Open question 1 proposes making the repo public. |
+| Simulator CI time | The repo is public (D1), so macOS minutes are free. CI still runs on `push` only (no duplicate `pull_request` runs), path-filtered, `concurrency: cancel-in-progress`, 30-min timeout, one required job. Local gate catches most failures before CI. |
 | Bots cannot run the simulator locally | All logic in the package; `make test-ios` refuses to run unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. Snapshot references are recorded by a `workflow_dispatch` run and downloaded with `gh run download`. |
 | Security-scoped URL quirks (Files in-place vs Inbox copies, siblings not readable) | `FileOpener` handles both paths and is tested with temp directories; images degrade to a placeholder with a "grant folder access" action instead of failing. |
 | swift-markdown API drift or Swift 6 Sendable friction | Pin a release tag; convert the AST to our own `Sendable` model in one visitor and never leak `Markup` types out of `MarkdownModel`. |
 | Large files freeze the UI | Parse off the main actor; `LazyVStack`; highlighting capped at 20 000 characters per code block; Source mode uses `UITextView`. Fixture generator produces a 500 KB document for a measured test. |
-| Snapshot flakiness | Pinned runner image, Xcode and simulator; `precision: 0.99`, `perceptualPrecision: 0.98`; if still flaky after two fixes, keep only XCUITests (open question 8). |
-| Scope creep ("just one more control") | Non-goals above; any new visible control needs an open-question entry and keving's yes. |
+| Snapshot flakiness | Pinned runner image, Xcode and simulator; `precision: 0.99`, `perceptualPrecision: 0.98`; if still flaky after two fixes, move the snapshot bundle into a separate non-blocking CI job (`continue-on-error: true`) instead of deleting it; XCUITests stay in the required job (decision D8). |
+| Scope creep ("just one more control") | Non-goals above; any new visible control needs keving's explicit yes. |
 | Signing / Apple Developer steps | Isolated in the final `needs_human` bead with a checklist in `docs/RELEASE.md`; nothing else depends on them. |
 
 ## 5. Beads
@@ -218,8 +218,9 @@ Create the skeleton everything else builds on. Files to create:
   needed. Info properties: `UILaunchScreen: {}` (native launch), `UISupportedInterfaceOrientations` all four for
   iPad and portrait+landscape for iPhone, `UIApplicationSceneManifest` with `UIApplicationSupportsMultipleScenes:
   false`. Do **not** add document types yet (B8 owns them).
-- `Config/Local.xcconfig.example` with `DEVELOPMENT_TEAM = REPLACE_ME` and `PRODUCT_BUNDLE_IDENTIFIER =
-  us.par72.mdview`; add `Config/Local.xcconfig` and `*.xcodeproj` to `.gitignore`. `make gen` copies the example to
+- `Config/Local.xcconfig.example` with `DEVELOPMENT_TEAM =` (deliberately empty: the Team ID is an unset build
+  setting until keving fills it in at B15; never look up or commit Apple account details) and
+  `PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview`; add `Config/Local.xcconfig` and `*.xcodeproj` to `.gitignore`. `make gen` copies the example to
   `Config/Local.xcconfig` when absent so XcodeGen never fails on a missing config file.
 - `Packages/MarkdownKit/Package.swift`: `swift-tools-version: 5.10` (or 6.0 if the installed toolchain is 6.x; record
   which), `platforms: [.iOS(.v17), .macOS(.v14)]`, products and targets `MarkdownModel`, `MarkdownViews`
@@ -284,8 +285,8 @@ without anyone running a simulator locally.
   `continue-on-error: true`, and always upload `**/__Snapshots__/**` as artifact `snapshots`.
 - `make test-ios` gains: pass `TEST_RUNNER_SNAPSHOT_TESTING_RECORD=all` when `SNAPSHOT_RECORD=1`; `-skipPackagePluginValidation`
   not needed; `-parallel-testing-enabled NO` for determinism.
-- Add a CI status badge to `README.md` and a "CI" section to `docs/DEVELOPMENT.md` describing cost (macOS minutes
-  bill at 10x on private repos), the record-snapshots flow, and how to download artifacts with `gh run download`.
+- Add a CI status badge to `README.md` and a "CI" section to `docs/DEVELOPMENT.md` describing cost (free: the repo is
+  public, decision D1), the record-snapshots flow, and how to download artifacts with `gh run download`.
 
 Edge cases: first boot of a simulator on a fresh runner can take 60–90 s (add a `xcrun simctl boot` warm-up step
 with `|| true`); Homebrew on runners already has some tools (`brew install` of an installed formula is a no-op);
@@ -468,7 +469,13 @@ Make the app a real Markdown handler. Files: `project.yml` (Info properties), `P
   `LSHandlerRank: Alternate`, `LSItemContentTypes: [net.daringfireball.markdown]`), `UTImportedTypeDeclarations`
   for `net.daringfireball.markdown` (conforms to `public.plain-text`, extensions `md markdown mdown mkdn mkd
   mdwn`, MIME `text/markdown`, description "Markdown"), `LSSupportsOpeningDocumentsInPlace: true`,
-  `UISupportsDocumentBrowser: false`, `UIFileSharingEnabled: true`.
+  `UISupportsDocumentBrowser: false`, `UIFileSharingEnabled: true`. Decision D5: add a second
+  `CFBundleDocumentTypes` entry (`CFBundleTypeName: Plain Text`, `LSHandlerRank: Alternate`,
+  `LSItemContentTypes: [public.plain-text]`) so `.txt` files open in mdview too.
+- Plain-text files (D5): `OpenedFile` gains `kind: Kind` (`.markdown`, `.plainText`), set from the extension
+  (`txt`, `text` → `.plainText`; Markdown extensions and anything else → `.markdown`). `ReaderView` shows a
+  `.plainText` file in `SourceView` only, never parsed as Markdown, and hides the Rendered / Source picker for it
+  (the stored `reader.mode` preference is left unchanged).
 - `FileOpener.open(url, source)`: `SecurityScope.withAccess(url)` (ignore a `false` return from
   `startAccessingSecurityScopedResource`, which is normal for Inbox and bundled files), read `Data`, reject above
   25 MB with `.tooLarge`, decode via `TextDecoding` (UTF-8 → UTF-16 BOM → ISO Latin-1; normalise CRLF to LF),
@@ -485,12 +492,13 @@ Make the app a real Markdown handler. Files: `project.yml` (Info properties), `P
 - `DropHandling`: `.dropDestination(for: URL.self)` on the root view (iPad drag from Files); dropped URLs go through
   `router.open(source: .drop)`. If the provider only yields a file representation copy, open the copy (images will
   not resolve; that is acceptable).
-- Edge cases: opening the same file twice replaces the path instead of stacking; a URL with a non-`md` extension but
+- Edge cases: opening the same file twice replaces the path instead of stacking; a `.txt` file opens as plain
+  source text; a URL with a non-`md` extension but
   text content still opens; an unreadable file shows the alert and does not crash; `onOpenURL` while already
   showing a reader swaps documents; bookmark creation failure is non-fatal (`bookmark = nil`).
 
 Tests (`swift test`, macOS): `FileOpenerTests` using temp directories: UTF-8, UTF-16 with BOM and Latin-1 files
-decode; CRLF normalised; a simulated `Inbox/` file is moved to `Imported/` and `inboxCopy` is true; collision adds a
+decode; a `.txt` file opens with `kind == .plainText` and a `.md` file with `.markdown`; CRLF normalised; a simulated `Inbox/` file is moved to `Imported/` and `inboxCopy` is true; collision adds a
 suffix; a 30 MB file throws `.tooLarge`; a directory URL throws `.unreadable`; `displayName` strips the extension.
 Manual verification is impossible for bots; the XCUITest from B7 still passes and `make test` builds the plist
 changes (`plutil -lint` the generated Info.plist in `build-ios` output is optional).
@@ -578,6 +586,10 @@ section), reference images under `App/mdviewSnapshotTests/__Snapshots__/`.
   `gh run watch`, `gh run download <id> -n snapshots -D /tmp/snaps`, copy into `__Snapshots__`, commit, push, and
   confirm the normal run passes. Reference images must come from CI's pinned simulator, never from a local run.
 - `make test-ios` prints the simulator device and OS it used so mismatches are obvious.
+- Flakiness (decision D8): if the snapshot bundle still flakes after two fix attempts, do not delete it. Move it out
+  of the required CI gate: give it its own scheme or test plan and run it in a second CI job with
+  `continue-on-error: true` (non-blocking), while XCUITests stay in the required `ios` job. Document the switch in
+  `docs/DEVELOPMENT.md`.
 
 Tests: the snapshot bundle passes in CI; `swift test` keeps passing (theme unit tests updated if constants moved).
 
@@ -626,8 +638,8 @@ and `ITSAppUsesNonExemptEncryption: NO` if B1 did not), `docs/RELEASE.md`, `Conf
 - `docs/RELEASE.md`, written for keving as a checklist he performs by hand (bots never do these):
   1. Apple Developer account: a free Apple ID installs on a personal device for 7 days at a time; the paid Apple
      Developer Program is required for TestFlight and 1-year personal signing.
-  2. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig`, fill `DEVELOPMENT_TEAM` with the 10-character
-     Team ID from developer.apple.com → Membership, keep or change the bundle id.
+  2. Copy `Config/Local.xcconfig.example` to `Config/Local.xcconfig` and fill the empty `DEVELOPMENT_TEAM` with the
+     10-character Team ID from developer.apple.com → Membership; keep the bundle id `us.par72.mdview`.
   3. `make open`; in Xcode select the `mdview` target → Signing & Capabilities → Automatically manage signing, pick
      the team. Connect the iPhone, enable Developer Mode on the phone (Settings → Privacy & Security), trust the
      Mac, pick the device as run destination, Run. First run: on the phone trust the developer certificate under
@@ -641,8 +653,9 @@ and `ITSAppUsesNonExemptEncryption: NO` if B1 did not), `docs/RELEASE.md`, `Conf
   Also list what to verify on the device: open a file from Files, share a file from Obsidian or Mail to mdview,
   drag a file onto the app on iPad, dark mode, a large text size, a note with images in the same folder (grant
   folder access when prompted).
-- `README.md`: short description, screenshot placeholder, features, "fully local" statement, link to
-  `docs/RELEASE.md` and `docs/DEVELOPMENT.md`.
+- `README.md` (B13 owns the user-facing rewrite; B14 only adds to it): short description, screenshot placeholder,
+  features (including `.txt` files shown as plain text), "fully local" statement, a License section (MIT, see
+  `LICENSE`), links to `docs/RELEASE.md` and `docs/DEVELOPMENT.md`. Keep the CI badge from B2.
 
 Tests: `plutil -lint App/mdview/PrivacyInfo.xcprivacy` passes; `make test` (device build) succeeds with the icon
 and manifest; the icon PNG is exactly 1024×1024 (check with `sips -g pixelWidth -g pixelHeight`).
@@ -650,7 +663,8 @@ and manifest; the icon PNG is exactly 1024×1024 (check with `sips -g pixelWidth
 ### B14 Final docs, architecture notes and end-to-end review
 
 Files: `docs/ARCHITECTURE.md`, updates to `docs/DEVELOPMENT.md`, `AGENTS.md`, `CLAUDE.md`, `README.md`; small code
-fixes allowed anywhere when the review finds them.
+fixes allowed anywhere when the review finds them. B14 depends on B13 and starts from B13's `README.md`: it only adds
+a link to `docs/ARCHITECTURE.md` and corrects facts the review finds, it does not rewrite the README.
 
 - `docs/ARCHITECTURE.md`: the layout from section 3.1, the module dependency graph, the data flow from 3.3, the
   decision table from 3.4 (updated with anything that changed during implementation, including the swift-markdown
@@ -669,7 +683,7 @@ fixes allowed anywhere when the review finds them.
 
 ### B15 Sign, install on iPhone and ship to TestFlight (human)
 
-keving performs `docs/RELEASE.md` steps 1–4 on his Mac: team id into `Config/Local.xcconfig`, personal install
+keving performs `docs/RELEASE.md` steps 1–4 on his Mac: fills the unset `DEVELOPMENT_TEAM` into `Config/Local.xcconfig`, personal install
 via Xcode on his iPhone, then App Store Connect app record, archive, upload, TestFlight internal test. He verifies
 the device checklist from B13 and reports back: what worked, what did not (file a bead per defect). No bot action;
 the runner stops here.
@@ -688,23 +702,24 @@ GitHub Actions on push, and beads that add UI or snapshot tests confirm them wit
 `make test` must finish without a `DEVELOPMENT_TEAM` and without network access beyond SwiftPM fetching the pinned
 packages on first build.
 
-## 7. Open questions for the owner
+## 7. Decisions (Oct 25, 2026)
 
-1. **Repo visibility and CI minutes.** The repo is private, so macOS runner minutes bill at 10x and a 12-minute run
-   costs ~120 of the 2 000 free minutes. Recommended default: make the repo public under MIT (nothing sensitive in
-   it) so Actions are free; otherwise set an Actions spending limit and accept roughly one CI run per bead.
-2. **Remote images.** Default: render a tappable chip that opens the URL in Safari, so the app process never makes a
-   network request. Alternative: fetch the image inside the app on tap (requires allowing `URLSession` in one file).
-3. **Bundle id and team.** Default `us.par72.mdview`; the Team ID lives only in the gitignored `Config/Local.xcconfig`.
-4. **Body typeface.** Default SF (system) for body and headings. Alternative: New York (serif) body via one theme
-   constant; no in-app setting either way.
-5. **Plain-text files.** Default: register only the Markdown type as a document type (so mdview does not appear for
-   every `.txt` share), but let the in-app picker select any text file.
-6. **Obsidian conveniences.** Default: front-matter stripping, wikilinks, embeds and callouts always on, no setting.
-7. **CI provider.** Default GitHub Actions. Alternative: Xcode Cloud (25 free hours/month with the paid developer
-   program, TestFlight upload built in) if Actions minutes become the constraint; it needs set-up in Xcode by a human.
-8. **Snapshot tests.** Default: keep them with tolerance; if they flake twice after fixes, drop to XCUITests only.
-9. **Swift language mode.** Default 6 with strict concurrency everywhere; per-target fallback to 5 only if a
-   dependency forces it, recorded in `ARCHITECTURE.md`.
-10. **Find-in-page placement.** Default: hidden pull-down search bar plus a bottom count bar only while searching, so
-    the toggle stays the single visible control. Alternative: a magnifier button in the toolbar.
+The planner's ten open questions are closed. **keving** answered D1 (open source) and D4 (he does not mind the
+font, so the default stands). The other eight were **decided for him** by Grok Bot with his go-ahead ("you can make
+the rest of the decisions"), mostly by taking the planner's default.
+
+| # | Question | Decision | Decided by | Beads affected |
+|---|---|---|---|---|
+| D1 | Repo visibility and CI minutes | **Public, MIT license.** `LICENSE` (MIT, copyright 2026 Kevin Gould / Par72 Labs, LLC) is committed on the plan branch. Before the visibility flip, `gitleaks detect` ran over the full history of all branches. macOS Actions minutes are free on a public repo. | keving | B2 (CI cost text), B13 (README License section) |
+| D2 | Remote images | **Open in Safari on tap; never loaded inline.** The app process makes no network request (keeps the no-network promise and the `no_networking` lint rule). | Decided for keving | none (B6/B10 already do this) |
+| D3 | Bundle id and team | **`us.par72.mdview`.** `DEVELOPMENT_TEAM` stays an unset build setting (empty in `Config/Local.xcconfig.example`); keving fills it in at B15. Bots never look up or store Apple account details. | Decided for keving | B1, B13, B15 |
+| D4 | Body typeface | **System SF font** (default), no setting. | keving ("don't care", default kept) | none |
+| D5 | Plain-text files | **Open `.txt` files too**, registered as an Alternate handler for `public.plain-text` and shown as plain source text (Source view only, no toggle, never parsed as Markdown). | Decided for keving | B8 |
+| D6 | Obsidian conveniences | **Always on** (front matter, wikilinks, embeds, callouts), no settings toggle. | Decided for keving | none |
+| D7 | CI provider | **GitHub Actions** (macOS runners free on public repos). | Decided for keving | B2 |
+| D8 | Snapshot tests | **Keep them.** If still flaky after two fixes, move them to a separate non-blocking CI job instead of deleting them; XCUITests stay required. | Decided for keving | B11 (and section 4) |
+| D9 | Swift language mode | **Swift 6 with strict concurrency**; per-target fallback to 5 only if a dependency forces it, recorded in `docs/ARCHITECTURE.md`. | Decided for keving | none |
+| D10 | Find-in-page placement | **Pull-down search bar** (SwiftUI `.searchable`, navigation-bar drawer) plus a bottom count bar only while searching; no magnifier button. | Decided for keving | none (B12 already does this) |
+
+Plan fix: B13 and B14 both edit `README.md`. B14 depends on B13 (also in bd), B13 owns the README rewrite, and B14
+only adds to it.
