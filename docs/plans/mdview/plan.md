@@ -12,10 +12,11 @@ chosen architecture. Everything is local: no network, no telemetry, no SDKs that
 
 **Non-goals.** Editing, sync, accounts, cloud, analytics, any network access by the app process (remote images are
 not fetched; see decision D2), Android, macOS/Catalyst, App Store release (TestFlight is the ceiling), settings
-screens, themes, fonts pickers. Footnotes and math are not rendered (shown as plain text).
+screens beyond one small Obsidian toggle (decision D6), themes, fonts pickers. Footnotes and math are not rendered (shown as plain text).
 
 **Who it is for.** keving reads reports, plans and bot output plus Obsidian vault notes on an iPhone. Obsidian
-conveniences (YAML front matter, `[[wikilinks]]`, `![[embeds]]`) are handled so vault notes look right.
+conveniences (YAML front matter, `[[wikilinks]]`, `![[embeds]]`, callouts) are handled so vault notes look right; they
+are on by default and one setting turns them off (D6).
 
 ## 2. Current state
 
@@ -30,7 +31,7 @@ Facts that shape the plan:
   so GitHub-hosted macOS runners cost nothing. CI still stays lean (one job, push-only, path-filtered).
 - Bots must never boot the iOS Simulator on keving's Mac. The local quality gate therefore consists only of
   macOS-native `swift test` for the Swift package plus a device-SDK `xcodebuild build` with signing disabled, which
-  compiles the app without any simulator. Simulator tests (XCUITest, snapshots) run only in GitHub Actions.
+  compiles the app without any simulator. Simulator tests (XCUITest) run only in GitHub Actions. Snapshot tests are deferred (D8).
 - The toolchain on keving's Mac could not be probed while planning (approval hook). B1 verifies and pins it.
 
 ## 3. Design
@@ -49,7 +50,6 @@ Packages/MarkdownKit/        # Swift package; all logic lives here and is tested
   Tests/MarkdownModelTests/  Tests/MarkdownViewsTests/  Tests/ReaderCoreTests/  Tests/Fixtures/*.md
 App/mdview/                  # thin app target: App entry, HomeView, ReaderView, SourceView, navigation, resources
 App/mdviewUITests/           # XCUITest (CI only)
-App/mdviewSnapshotTests/     # swift-snapshot-testing (CI only)
 .github/workflows/ci.yml
 docs/DEVELOPMENT.md  docs/ARCHITECTURE.md  docs/RELEASE.md  docs/plans/mdview/
 ```
@@ -88,7 +88,7 @@ public indirect enum Inline: Equatable, Sendable {
     case html(String)
 }
 public struct MarkdownParser: Sendable {
-    public struct Options: Sendable { public var obsidian: Bool = true }
+    public struct Options: Sendable { public var obsidian: Bool = true }   // app passes @AppStorage("obsidian.enabled") (D6)
     public init(options: Options = .init())
     public func parse(_ text: String) -> MarkdownDocument      // pure, synchronous, callable off the main actor
 }
@@ -188,11 +188,11 @@ sizes come from text styles or `@ScaledMetric`, so Dynamic Type scales everythin
 | Risk | Containment |
 |---|---|
 | Simulator CI time | The repo is public (D1), so macOS minutes are free. CI still runs on `push` only (no duplicate `pull_request` runs), path-filtered, `concurrency: cancel-in-progress`, 30-min timeout, one required job. Local gate catches most failures before CI. |
-| Bots cannot run the simulator locally | All logic in the package; `make test-ios` refuses to run unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. Snapshot references are recorded by a `workflow_dispatch` run and downloaded with `gh run download`. |
+| Bots cannot run the simulator locally | All logic in the package; `make test-ios` refuses to run unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. |
 | Security-scoped URL quirks (Files in-place vs Inbox copies, siblings not readable) | `FileOpener` handles both paths and is tested with temp directories; images degrade to a placeholder with a "grant folder access" action instead of failing. |
 | swift-markdown API drift or Swift 6 Sendable friction | Pin a release tag; convert the AST to our own `Sendable` model in one visitor and never leak `Markup` types out of `MarkdownModel`. |
 | Large files freeze the UI | Parse off the main actor; `LazyVStack`; highlighting capped at 20 000 characters per code block; Source mode uses `UITextView`. Fixture generator produces a 500 KB document for a measured test. |
-| Snapshot flakiness | Pinned runner image, Xcode and simulator; `precision: 0.99`, `perceptualPrecision: 0.98`; if still flaky after two fixes, move the snapshot bundle into a separate non-blocking CI job (`continue-on-error: true`) instead of deleting it; XCUITests stay in the required job (decision D8). |
+| Visual regressions with no snapshot tests | Snapshot tests are deferred until a working prototype exists (D8). Until then B11 checks visuals with SwiftUI previews in light/dark and at several Dynamic Type sizes, and XCUITests cover behaviour. Snapshot tests come back as a follow-up bead after B15. |
 | Scope creep ("just one more control") | Non-goals above; any new visible control needs keving's explicit yes. |
 | Signing / Apple Developer steps | Isolated in the final `needs_human` bead with a checklist in `docs/RELEASE.md`; nothing else depends on them. |
 
@@ -267,8 +267,8 @@ generated project files. Commit `mdview.xcodeproj`? No: it is generated.
 Create `.github/workflows/ci.yml` so every push gets lint, package tests, the device build and simulator tests
 without anyone running a simulator locally.
 
-- Triggers: `push` on all branches with `paths-ignore: ["docs/**", "**/*.md", "LICENSE"]`; `workflow_dispatch` with
-  boolean input `record_snapshots` (default false; used by B11). No `pull_request` trigger (avoids duplicate runs;
+- Triggers: `push` on all branches with `paths-ignore: ["docs/**", "**/*.md", "LICENSE"]`; `workflow_dispatch` (no inputs;
+  manual re-runs). No `pull_request` trigger (avoids duplicate runs;
   pushes still show as checks on the PR).
 - `concurrency: { group: ci-${{ github.ref }}, cancel-in-progress: true }`, `timeout-minutes: 30`,
   `permissions: contents: read`.
@@ -280,13 +280,11 @@ without anyone running a simulator locally.
 - Steps: `actions/checkout@v4`; `brew install xcodegen swiftformat swiftlint` (`HOMEBREW_NO_AUTO_UPDATE=1`, or
   `make tools`); cache `Packages/MarkdownKit/.build` and `~/Library/Developer/Xcode/DerivedData` keyed on
   `Package.resolved` + `project.yml`; `make lint`; `make test`; `make test-ios` with `CI=true`; on failure upload
-  `build/test.xcresult` as an artifact (`actions/upload-artifact@v4`, 7-day retention); when
-  `inputs.record_snapshots` is true, set `SNAPSHOT_RECORD=1` for `make test-ios`, mark that step
-  `continue-on-error: true`, and always upload `**/__Snapshots__/**` as artifact `snapshots`.
-- `make test-ios` gains: pass `TEST_RUNNER_SNAPSHOT_TESTING_RECORD=all` when `SNAPSHOT_RECORD=1`; `-skipPackagePluginValidation`
-  not needed; `-parallel-testing-enabled NO` for determinism.
+  `build/test.xcresult` as an artifact (`actions/upload-artifact@v4`, 7-day retention). No snapshot recording or
+  snapshot artifacts (snapshot tests are deferred, D8).
+- `make test-ios` gains `-parallel-testing-enabled NO` for determinism.
 - Add a CI status badge to `README.md` and a "CI" section to `docs/DEVELOPMENT.md` describing cost (free: the repo is
-  public, decision D1), the record-snapshots flow, and how to download artifacts with `gh run download`.
+  public, decision D1) and how to download the xcresult artifact with `gh run download`.
 
 Edge cases: first boot of a simulator on a fresh runner can take 60–90 s (add a `xcrun simctl boot` warm-up step
 with `|| true`); Homebrew on runners already has some tools (`brew install` of an installed formula is a no-op);
@@ -308,8 +306,10 @@ Obsidian preprocessing. Files: `Sources/MarkdownModel/Model/*.swift`, `Sources/M
 Rules:
 - `parse` is pure and synchronous; no `Markup` type leaks outside the module. Assign `BlockID` in pre-order,
   including nested blocks inside quotes and list items.
-- Front matter: if the text begins with `---\n` (allow `\r\n`) and a line that is exactly `---` or `...` closes it
-  within the first 200 lines, strip it into `frontMatter`; otherwise leave the text alone.
+- Front matter (when `options.obsidian`): if the text begins with `---\n` (allow `\r\n`) and a line that is exactly
+  `---` or `...` closes it within the first 200 lines, strip it into `frontMatter`; otherwise leave the text alone.
+- `options.obsidian == false` (D6 setting off): no front matter stripping, wikilinks, embeds or callouts; the text
+  parses as plain GFM (e.g. `[[Note]]` stays literal text, `> [!note]` stays an ordinary quote).
 - Obsidian (when `options.obsidian`): operate on `Inline.text` nodes only (code spans and code blocks are separate
   nodes and must be untouched). `![[name.png]]` / `![[name.png|300]]` → `.image(source: "name.png", alt: "name")`;
   `[[Note]]`, `[[Note|Alias]]`, `[[Note#Heading]]` → `.link(destination: "Note.md" (+ `#slug`), children: [.text(Alias or Note)])`.
@@ -334,7 +334,8 @@ closing fence, CRLF line endings, a heading-only file, unicode and emoji, a 10 0
 
 Tests (`Tests/MarkdownModelTests/`): one test per fixture asserting the block structure (compare against hand-written
 expected `Block` values for the small fixtures; for the kitchen sink assert counts and a few spot checks), front
-matter round trip, Obsidian conversions, slug dedupe, `flatten` rules, empty input → empty document, CRLF handling,
+matter round trip, Obsidian conversions, the same fixture parsed with `obsidian: false` (everything stays literal),
+slug dedupe, `flatten` rules, empty input → empty document, CRLF handling,
 `BlockID` uniqueness and pre-order, and an `XCTest.measure` baseline parsing a generated 500 KB document (no hard
 limit, but log the time).
 
@@ -392,8 +393,8 @@ fixtures). Code blocks, tables and images are stubs in this bead (render code as
 Tests (`Tests/MarkdownViewsTests/`, run on macOS via `swift test`): the flatten invariant for every inline list in all
 fixtures (parse fixture → for each text-bearing block assert `characters == flatten`); highlight ranges set the
 background attribute on exactly the requested characters; `MarkdownTheme.default` text styles for H1–H6; a smoke
-test that `MarkdownView(document:)` can be instantiated with every fixture. Visual verification happens in B11
-snapshots.
+test that `MarkdownView(document:)` can be instantiated with every fixture. Visual verification happens in B11's
+preview pass.
 
 ### B6 Renderer: code blocks, tables, images
 
@@ -421,7 +422,7 @@ Replace the B5 stubs. Files: `Blocks/CodeBlockView.swift`, `Blocks/TableView.swi
 
 Tests (macOS `swift test`): `CodePalette` has a colour for every `TokenKind` in both schemes; table cell `RunID`s are
 unique per table; a fake `ImageLoading` returning each `ImageLoadResult` case can be injected via the environment
-(instantiation smoke test). Visuals land in B11 snapshots.
+(instantiation smoke test). Visuals are checked in B11's preview pass.
 
 ### B7 Reader screen with Rendered / Source toggle
 
@@ -523,6 +524,13 @@ and wire `HomeView` into `RootView`; `App/mdviewUITests/HomeTests.swift`.
   friendly copy ("Open a Markdown file from Files, the share sheet, or drop one here") plus a secondary button
   "Read the welcome guide" that opens the bundled sample. Pull-to-refresh is not needed. `-uiTesting` uses
   `InMemoryRecentsPersistence` seeded empty.
+- Obsidian setting (D6): a second, small toolbar button on `HomeView` only (`gearshape` icon, identifier
+  `home.settings`) opens `SettingsSheet` (`App/mdview/Settings/SettingsSheet.swift`): a `.medium`-detent sheet with
+  one `Toggle("Obsidian extras", ...)` (identifier `settings.obsidian`) bound to
+  `@AppStorage("obsidian.enabled") var obsidianEnabled = true`, a one-line footer ("Front matter, [[wikilinks]],
+  embeds and callouts") and a Done button. Nothing else goes in the sheet. `ReaderModel` reads the same key and
+  passes it as `MarkdownParser.Options(obsidian:)`; when the value changes it re-parses the open document. The
+  reader toolbar stays one control (the Rendered / Source picker). `-uiTesting` resets the key to `true`.
 - Privacy manifest note for B13: resolving bookmarks and reading modification dates uses file-timestamp APIs; the
   reason code is recorded there, not here.
 
@@ -530,7 +538,7 @@ Tests: `RecentsStoreTests` on macOS with temp files: record/upsert/dedupe, cap a
 (move the file, resolve again), deleted file drops the entry, corrupt JSON → empty, atomic save round trip.
 XCUITest `HomeTests` (CI): launch with `-uiTesting`, assert `home.open` and the empty-state button exist, tap "Read
 the welcome guide", assert the reader title "Welcome", go back, assert the list is still empty (samples are not
-recorded).
+recorded); tap `home.settings`, assert `settings.obsidian` exists and is on, toggle it off, dismiss.
 
 ### B10 Relative images, folder access and relative links
 
@@ -563,35 +571,24 @@ URI; `FolderAccessStore.folderCovering` picks the deepest grant; percent-encoded
 behaviour cannot be simulated on macOS without sandboxing, so unit-test the decision function
 (`classify(error:)`) directly.
 
-### B11 Typography, dark mode, Dynamic Type polish and snapshot tests
+### B11 Typography, dark mode and Dynamic Type polish
 
-Files: `Theme/MarkdownTheme.swift` tuning, `App/mdviewSnapshotTests/*.swift`, `project.yml` (new unit-test target
-`mdviewSnapshotTests` hosted by `mdview`, package dependency `pointfreeco/swift-snapshot-testing` pinned to a
-release, test-only), `.github/workflows/ci.yml` (already supports recording), `docs/DEVELOPMENT.md` (snapshot
-section), reference images under `App/mdviewSnapshotTests/__Snapshots__/`.
+Files: `Theme/MarkdownTheme.swift` tuning, `Previews/PreviewDocuments.swift`, new fixtures
+`Tests/Fixtures/code-languages.md` (6 languages) and `Tests/Fixtures/tables.md` (wide and narrow tables),
+`docs/DEVELOPMENT.md` (a short "Visual checks" section). Snapshot tests are **deferred** (decision D8): no snapshot
+target, no `swift-snapshot-testing` dependency, no snapshot CI job or recording flow in this plan.
 
 - Visual pass against section 3.5 using the previews: heading rhythm, list indentation at three depths, quote and
   callout styling, inline code chip, code block padding and language label, table rules, figure captions, link
   colour (accent) in both schemes, selection colours, iPad measure centering, landscape iPhone. Verify Dynamic Type
   at `.xSmall`, `.large`, `.accessibility3`: nothing truncates, tables and code scroll instead of clipping,
   `@ScaledMetric` drives indents and bars.
-- Snapshot tests: `assertSnapshot(of: UIHostingController(rootView:), as: .image(on: .iPhone13, precision: 0.99,
-  perceptualPrecision: 0.98, traits: ...))` for `gfm-kitchen-sink.md`, `obsidian-note.md`, `code-languages.md` (new
-  fixture with 6 languages), `tables.md` (new fixture, wide and narrow tables) in light and dark, and the kitchen
-  sink at `.accessibility3` and `.xSmall`; plus `HomeView` empty state and `HomeView` with three seeded recents.
-  Share fixtures with the package via a symlink-free approach: copy the needed fixtures into
-  `App/mdviewSnapshotTests/Fixtures/` (a `make sync-fixtures` target keeps them identical and `make lint` fails if
-  they diverge; implement as a `diff -r` step).
-- Recording flow (document it): trigger `gh workflow run ci.yml -f record_snapshots=true --ref <branch>`, wait with
-  `gh run watch`, `gh run download <id> -n snapshots -D /tmp/snaps`, copy into `__Snapshots__`, commit, push, and
-  confirm the normal run passes. Reference images must come from CI's pinned simulator, never from a local run.
-- `make test-ios` prints the simulator device and OS it used so mismatches are obvious.
-- Flakiness (decision D8): if the snapshot bundle still flakes after two fix attempts, do not delete it. Move it out
-  of the required CI gate: give it its own scheme or test plan and run it in a second CI job with
-  `continue-on-error: true` (non-blocking), while XCUITests stay in the required `ios` job. Document the switch in
-  `docs/DEVELOPMENT.md`.
+- Previews for `gfm-kitchen-sink.md`, `obsidian-note.md`, `code-languages.md` and `tables.md` in light and dark, and
+  the kitchen sink at `.xSmall` and `.accessibility3`, so the visual pass can be repeated by hand in Xcode.
+- Note in the bead report what was tuned and any visual issue left for later.
 
-Tests: the snapshot bundle passes in CI; `swift test` keeps passing (theme unit tests updated if constants moved).
+Tests: `swift test` keeps passing (theme unit tests updated if constants moved; the new fixtures parse without
+error); `make test` builds. No snapshot tests.
 
 ### B12 Find in page
 
@@ -633,7 +630,7 @@ and `ITSAppUsesNonExemptEncryption: NO` if B1 did not), `docs/RELEASE.md`, `Conf
 
 - `PrivacyInfo.xcprivacy`: `NSPrivacyTracking: false`, empty `NSPrivacyTrackingDomains`, empty
   `NSPrivacyCollectedDataTypes`, `NSPrivacyAccessedAPITypes` with `NSPrivacyAccessedAPICategoryUserDefaults`
-  reason `CA92.1` (reader mode) and `NSPrivacyAccessedAPICategoryFileTimestamp` reason `C617.1` (recents and
+  reason `CA92.1` (reader mode and the Obsidian setting) and `NSPrivacyAccessedAPICategoryFileTimestamp` reason `C617.1` (recents and
   bookmarks). Validate with `plutil -lint`.
 - `docs/RELEASE.md`, written for keving as a checklist he performs by hand (bots never do these):
   1. Apple Developer account: a free Apple ID installs on a personal device for 7 days at a time; the paid Apple
@@ -668,14 +665,13 @@ a link to `docs/ARCHITECTURE.md` and corrects facts the review finds, it does no
 
 - `docs/ARCHITECTURE.md`: the layout from section 3.1, the module dependency graph, the data flow from 3.3, the
   decision table from 3.4 (updated with anything that changed during implementation, including the swift-markdown
-  and snapshot-testing versions and the Swift language mode per target), the text-rule invariant, the
-  no-networking lint rule, and the CI/record-snapshots flow.
+  version and the Swift language mode per target), the text-rule invariant, the no-networking lint rule, the
+  Obsidian setting (D6), the CI flow, and a "Deferred" note that snapshot tests come after the prototype (D8).
 - End-to-end review checklist, each item verified by a command or a CI artifact and recorded in the bead notes:
   `make lint`, `make test`, CI green on the branch (`gh run list`), XCUITests cover launch, home, reader toggle,
-  find; snapshot references present for every snapshot test; `grep -rn "URLSession\|WKWebView" App Packages`
-  returns nothing outside tests; `Package.resolved` pins exactly swift-markdown (+ its cmark dependency) and
-  swift-snapshot-testing (+ its transitive deps) and nothing else; Info.plist contains the document type, in-place
-  opening and no multi-scene; `PrivacyInfo.xcprivacy` present; Dynamic Type sizes covered by snapshots; accessibility
+  find and the Obsidian setting; `grep -rn "URLSession\|WKWebView" App Packages` returns nothing outside tests;
+  `Package.resolved` pins exactly swift-markdown (+ its cmark dependency) and nothing else; Info.plist contains the
+  document types, in-place opening and no multi-scene; `PrivacyInfo.xcprivacy` present; accessibility
   identifiers listed in `docs/DEVELOPMENT.md` for future UI tests.
 - Measure and record (CI log or `swift test` output): parse time for the 500 KB fixture, tokenizer time for the
   10 000-line fixture. Add to `ARCHITECTURE.md` under "Performance baselines".
@@ -698,28 +694,35 @@ make test      # swift test for Packages/MarkdownKit on macOS, then xcodebuild b
 ```
 
 Rules: never run `make test-ios`, `xcodebuild test`, `xcrun simctl`, or any simulator locally; simulator tests run in
-GitHub Actions on push, and beads that add UI or snapshot tests confirm them with `gh run watch` / `gh run list`.
+GitHub Actions on push, and beads that add UI tests confirm them with `gh run watch` / `gh run list`.
 `make test` must finish without a `DEVELOPMENT_TEAM` and without network access beyond SwiftPM fetching the pinned
 packages on first build.
 
 ## 7. Decisions (Oct 25, 2026)
 
-The planner's ten open questions are closed. **keving** answered D1 (open source) and D4 (he does not mind the
-font, so the default stands). The other eight were **decided for him** by Grok Bot with his go-ahead ("you can make
-the rest of the decisions"), mostly by taking the planner's default.
+The planner's ten open questions are closed. keving reviewed every decision on Oct 25, 2026: he confirmed D1, D2,
+D3, D4, D5, D7, D9 and D10, and changed D6 (add a setting) and D8 (defer snapshot tests). Grok Bot had proposed the
+first answers to D2, D3 and D5–D10 with his go-ahead; all ten are now keving's.
 
 | # | Question | Decision | Decided by | Beads affected |
 |---|---|---|---|---|
-| D1 | Repo visibility and CI minutes | **Public, MIT license.** `LICENSE` (MIT, copyright 2026 Kevin Gould / Par72 Labs, LLC) is committed on the plan branch. Before the visibility flip, `gitleaks detect` ran over the full history of all branches. macOS Actions minutes are free on a public repo. | keving | B2 (CI cost text), B13 (README License section) |
-| D2 | Remote images | **Open in Safari on tap; never loaded inline.** The app process makes no network request (keeps the no-network promise and the `no_networking` lint rule). | Decided for keving | none (B6/B10 already do this) |
-| D3 | Bundle id and team | **`us.par72.mdview`.** `DEVELOPMENT_TEAM` stays an unset build setting (empty in `Config/Local.xcconfig.example`); keving fills it in at B15. Bots never look up or store Apple account details. | Decided for keving | B1, B13, B15 |
-| D4 | Body typeface | **System SF font** (default), no setting. | keving ("don't care", default kept) | none |
-| D5 | Plain-text files | **Open `.txt` files too**, registered as an Alternate handler for `public.plain-text` and shown as plain source text (Source view only, no toggle, never parsed as Markdown). | Decided for keving | B8 |
-| D6 | Obsidian conveniences | **Always on** (front matter, wikilinks, embeds, callouts), no settings toggle. | Decided for keving | none |
-| D7 | CI provider | **GitHub Actions** (macOS runners free on public repos). | Decided for keving | B2 |
-| D8 | Snapshot tests | **Keep them.** If still flaky after two fixes, move them to a separate non-blocking CI job instead of deleting them; XCUITests stay required. | Decided for keving | B11 (and section 4) |
-| D9 | Swift language mode | **Swift 6 with strict concurrency**; per-target fallback to 5 only if a dependency forces it, recorded in `docs/ARCHITECTURE.md`. | Decided for keving | none |
-| D10 | Find-in-page placement | **Pull-down search bar** (SwiftUI `.searchable`, navigation-bar drawer) plus a bottom count bar only while searching; no magnifier button. | Decided for keving | none (B12 already does this) |
+| D1 | Repo visibility and CI minutes | **Public, MIT license.** `LICENSE` (MIT, copyright 2026 Kevin Gould / Par72 Labs, LLC) is committed on the plan branch. Before the visibility flip, `gitleaks detect` ran over the full history of all branches. macOS Actions minutes are free on a public repo. | keving (confirmed Oct 25, 2026) | B2 (CI cost text), B13 (README License section) |
+| D2 | Remote images | **Open in Safari on tap; never loaded inline.** The app process makes no network request (keeps the no-network promise and the `no_networking` lint rule). | Confirmed by keving, Oct 25, 2026 | none (B6/B10 already do this) |
+| D3 | Bundle id and team | **`us.par72.mdview`.** `DEVELOPMENT_TEAM` stays an unset build setting (empty in `Config/Local.xcconfig.example`); keving fills it in at B15. Bots never look up or store Apple account details. | Confirmed by keving, Oct 25, 2026 | B1, B13, B15 |
+| D4 | Body typeface | **System SF font** (default), no setting. | Confirmed by keving, Oct 25, 2026 | none |
+| D5 | Plain-text files | **Open `.txt` files too**, registered as an Alternate handler for `public.plain-text` and shown as plain source text (Source view only, no toggle, never parsed as Markdown). | Confirmed by keving, Oct 25, 2026 | B8 |
+| D6 | Obsidian conveniences | **On by default, with one user setting to turn them off.** Covers front matter, wikilinks, embeds and callouts. Stored with `@AppStorage("obsidian.enabled")` (default `true`). Kept minimal: a small gear button on the home screen opens a one-toggle settings sheet; the reader toolbar keeps its single control. | keving's call (changed Oct 25, 2026) | B3 (`obsidian: false` path), B9 (settings sheet and wiring), B13 (privacy reason), B14 |
+| D7 | CI provider | **GitHub Actions** (macOS runners free on public repos). | Confirmed by keving, Oct 25, 2026 | B2 |
+| D8 | Snapshot tests | **Deferred.** No snapshot tests, no `swift-snapshot-testing` dependency and no snapshot CI job or recording flow for now. Add them back after a working prototype exists. | keving's call (changed Oct 25, 2026) | B2, B11, B14 (and sections 2–4) |
+| D9 | Swift language mode | **Swift 6 with strict concurrency**; per-target fallback to 5 only if a dependency forces it, recorded in `docs/ARCHITECTURE.md`. | Confirmed by keving, Oct 25, 2026 | none |
+| D10 | Find-in-page placement | **Pull-down search bar** (SwiftUI `.searchable`, navigation-bar drawer) plus a bottom count bar only while searching; no magnifier button. | Confirmed by keving, Oct 25, 2026 | none (B12 already does this) |
+
+### Deferred
+
+- **Snapshot tests (D8).** After a working prototype (B15 done), a follow-up bead adds an `mdviewSnapshotTests`
+  target with `pointfreeco/swift-snapshot-testing` (test-only), reference images recorded in CI (never locally), and
+  a `workflow_dispatch` recording flow. If they prove flaky, they go into a non-blocking CI job rather than being
+  deleted. Not part of this plan's beads.
 
 Plan fix: B13 and B14 both edit `README.md`. B14 depends on B13 (also in bd), B13 owns the README rewrite, and B14
 only adds to it.
