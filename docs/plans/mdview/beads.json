@@ -1,0 +1,335 @@
+{
+  "feature": "mdview",
+  "title": "mdview: a one-button, fully local iOS Markdown viewer",
+  "checks": [
+    "make lint",
+    "make test"
+  ],
+  "verify": "agent",
+  "open_questions": [],
+  "beads": [
+    {
+      "key": "B1",
+      "title": "Scaffold project with Textual, DocumentGroup viewer, MDCore package, Makefile and lint",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [],
+      "owned_paths": [
+        "project.yml",
+        "Makefile",
+        "Config/",
+        "Packages/MDCore/",
+        "App/mdview/mdviewApp.swift",
+        "App/mdview/TextDocument.swift",
+        "App/mdview/Info.plist",
+        "App/mdview/Assets.xcassets/",
+        "App/mdviewUITests/LaunchTests.swift",
+        ".swiftformat",
+        ".swiftlint.yml",
+        ".gitignore",
+        "docs/DEVELOPMENT.md",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "description": "Create the skeleton every later bead builds on, using off-the-shelf parts (D11): an XcodeGen project.yml (iOS 18.0 minimum because Textual requires it, Swift 6 language mode with strict concurrency, generated .xcodeproj gitignored) with one SPM dependency for the app target: Textual (https://github.com/gonzalezreal/textual, MIT) pinned upToNextMinor from 0.5.0. A tiny local Swift package Packages/MDCore (Foundation only, platforms iOS 18 + macOS 15, no dependencies) holds the pure logic later beads add and is tested with swift test on the Mac; B1 adds MDCore.TextDecoding (UTF-8, then UTF-16 with BOM, then Windows-1252 fallback) with tests. The app is a read-only SwiftUI DocumentGroup(viewing: TextDocument.self): TextDocument is a FileDocument whose readableContentTypes are an imported Markdown UTI (net.daringfireball.markdown; extensions md, markdown, mdown) and public.plain-text, decoded with TextDecoding; the viewer shows the raw text for now. The system document browser supplies Files access, Recents, share-sheet/Open-in and drag-and-drop, so there is no custom browser or recents store. Info.plist: CFBundleDocumentTypes (Markdown as Owner/Default, plain text as Alternate, D5), UTImportedTypeDeclarations, LSSupportsOpeningDocumentsInPlace YES, UISupportsDocumentBrowser YES. Add one XCUITest launch test (CI only), a Makefile (tools, gen, lint, format, test, build-ios, test-ios guarded to CI, open, clean), swiftformat/swiftlint config including a custom no_networking rule over App/ and Packages/ (URLSession, NWConnection, WKWebView, CFNetwork), and docs/DEVELOPMENT.md plus the build/test sections of CLAUDE.md and AGENTS.md. Record the toolchain versions. Never boot a simulator locally. Config/Local.xcconfig.example sets PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview and leaves DEVELOPMENT_TEAM empty (keving fills it at B8); never look up or commit Apple account details.",
+      "acceptance": [
+        "`make lint` exits 0 and exits non-zero when a file containing `URLSession` is added under App/ or Packages/",
+        "`make test` exits 0: `swift test --package-path Packages/MDCore` passes (TextDecoding tests for UTF-8, UTF-16 BOM and Windows-1252 input) and `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO` succeeds with Textual resolved and no DEVELOPMENT_TEAM set",
+        "`make test-ios` exits non-zero with an explanatory message unless CI=true or MDVIEW_ALLOW_SIMULATOR=1",
+        "The app's only package dependency is Textual pinned `.upToNextMinor(from: \"0.5.0\")`; MDCore has no dependencies; the deployment target is iOS 18.0 and SWIFT_VERSION is 6",
+        "Info.plist declares the Markdown UTI (imported) and public.plain-text document types, LSSupportsOpeningDocumentsInPlace and UISupportsDocumentBrowser; the app entry is a DocumentGroup(viewing:) scene",
+        "`git status` after `make gen` shows no untracked .xcodeproj or Config/Local.xcconfig; Config/Local.xcconfig.example contains `PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview` and an empty `DEVELOPMENT_TEAM =` line",
+        "docs/DEVELOPMENT.md lists the Xcode, Swift, xcodegen, swiftformat and swiftlint versions and the Makefile targets; CLAUDE.md and AGENTS.md no longer contain the placeholder build/test section"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B2",
+      "title": "Add GitHub Actions CI with device build and simulator launch test",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B1"
+      ],
+      "owned_paths": [
+        ".github/workflows/",
+        "README.md",
+        "docs/DEVELOPMENT.md"
+      ],
+      "description": "Create .github/workflows/ci.yml: push trigger on all branches with docs path-ignore (no pull_request trigger), workflow_dispatch with no inputs, concurrency cancel-in-progress keyed on github.ref, 30-minute timeout, one job on a pinned macOS runner image with an Xcode that has the iOS 18+ SDK selected via xcode-select, SwiftPM/DerivedData caching, steps: xcrun simctl list devices available (diagnostic), make lint, make test, make test-ios (CI=true) against a simulator that exists on that image, xcresult upload on failure. make test-ios runs tests non-parallel. Add a CI badge to README.md and a CI section to docs/DEVELOPMENT.md (free because the repo is public, D1; gh run download for the xcresult). This is the only place simulators run.",
+      "acceptance": [
+        ".github/workflows/ci.yml exists with triggers push (paths-ignore docs/** and **/*.md) and workflow_dispatch, a concurrency group on github.ref with cancel-in-progress, and timeout-minutes <= 30",
+        "After pushing the branch, `gh run list --branch <branch> --limit 1` shows a completed run with conclusion success that ran make lint, make test and make test-ios (LaunchTests pass on the simulator)",
+        "docs/DEVELOPMENT.md has a CI section (cost, `gh run download` for the xcresult) and README.md shows the CI badge"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B3",
+      "title": "Render Markdown with Textual: GitHub style, built-in code highlighting, local-only images",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B1"
+      ],
+      "owned_paths": [
+        "App/mdview/Reader/RenderedView.swift",
+        "App/mdview/Reader/LocalImageLoader.swift",
+        "App/mdview/mdviewApp.swift",
+        "Packages/MDCore/Sources/MDCore/RemoteImages.swift",
+        "Packages/MDCore/Sources/MDCore/ImagePolicy.swift",
+        "Packages/MDCore/Tests/MDCoreTests/RemoteImagesTests.swift",
+        "Packages/MDCore/Tests/MDCoreTests/ImagePolicyTests.swift"
+      ],
+      "description": "Replace the raw-text viewer with RenderedView: a ScrollView containing Textual's StructuredText(markdown:) with .textual.structuredTextStyle(.gitHub), .textual.textSelection(.enabled) and Textual's built-in Prism-based code highlighting (default highlighter theme, follows light/dark). Do not write a parser, renderer or highlighter. Text scales with Dynamic Type through Textual's font-relative metrics; cap the readable width on iPad. Keep the app network-free (D2): MDCore.RemoteImages.linkify(_:) rewrites `![alt](http(s)://...)` outside code into a link `[Image: alt](url)` so remote images show as a tappable link that opens Safari through the default openURL; MDCore.ImagePolicy.allows(_ url: URL) returns true only for file: URLs; LocalImageLoader is a Textual AttachmentLoader installed with .textual.imageAttachmentLoader(...) that resolves URLs relative to the document's directory (from @Environment(\\.documentConfiguration)?.fileURL), refuses anything ImagePolicy rejects, and reads file data only (no URLSession, no Textual URL loader). If a local image is unreadable it is simply not shown (folder access is deferred). Links open via the system (Safari for http/https).",
+      "acceptance": [
+        "`make test` passes, including RemoteImagesTests (remote image becomes a link, local image and images inside fenced/inline code untouched) and ImagePolicyTests (http, https, data and ftp rejected; file accepted)",
+        "RenderedView uses Textual StructuredText with the GitHub style and text selection; the repo contains no custom Markdown parser, renderer or syntax highlighter",
+        "The image loader passed to `.textual.imageAttachmentLoader` is LocalImageLoader, never Textual's `.image()` URL loader; `make lint` passes (no networking APIs in App/ or Packages/)",
+        "CI on the branch is green"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B4",
+      "title": "Reader screen with Rendered / Source toggle and native source view",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B3"
+      ],
+      "owned_paths": [
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdview/Reader/SourceView.swift",
+        "App/mdview/mdviewApp.swift",
+        "App/mdviewUITests/"
+      ],
+      "description": "Add ReaderView as the DocumentGroup viewer: a segmented Picker in the toolbar (accessibility id reader.modePicker) switching Rendered (RenderedView, accessibility id reader.rendered) and Source (SourceView, id reader.source), persisted with @AppStorage(\"reader.mode\") defaulting to Rendered. SourceView is a read-only, selectable UITextView wrapper (UIViewRepresentable) with a monospaced font that scales with Dynamic Type (UIFontMetrics), adjustsFontForContentSizeCategory, and isFindInteractionEnabled = true so the system find bar works there. Plain-text files (.txt, D5) always show SourceView and hide the picker. Navigation title is the file name.",
+      "acceptance": [
+        "`make test` passes",
+        "ReaderView shows the picker for Markdown files and switches between RenderedView and SourceView; the choice persists via @AppStorage(\"reader.mode\")",
+        "For a public.plain-text document no picker is shown and SourceView is used",
+        "SourceView is not editable, uses a Dynamic Type-scaled monospaced font, and has isFindInteractionEnabled set",
+        "CI on the branch is green"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B5",
+      "title": "Obsidian setting: hide front matter and turn wikilinks into plain text",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B4"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/ObsidianPreprocessor.swift",
+        "Packages/MDCore/Tests/MDCoreTests/ObsidianPreprocessorTests.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdview/Reader/RenderedView.swift"
+      ],
+      "description": "Only the cheap Obsidian parts (D6, D11). MDCore.ObsidianPreprocessor.process(_:) (a) removes a leading YAML front matter block (--- at line 1 through the next --- or ... line; leave the text alone if unterminated) and (b) turns [[Note]] into `Note`, [[Note|Alias]] into `Alias` and [[Note#Heading]] into `Note > Heading` as plain text, skipping fenced code blocks and inline code spans and leaving ![[embeds]] and > [!callout] blocks untouched (embeds and callouts are deferred). RenderedView feeds Markdown through it when @AppStorage(\"obsidian.enabled\") is true (default true). The Source view always shows the original text. The setting lives in a small toolbar Menu (ellipsis.circle, accessibility id reader.menu) in ReaderView containing one Toggle \"Obsidian extras\" (id settings.obsidian); DocumentGroup owns the home screen, so there is no settings screen.",
+      "acceptance": [
+        "`make test` passes, including ObsidianPreprocessorTests covering front matter (present, absent, unterminated, `...` terminator), [[Note]], [[Note|Alias]], [[Note#Heading]], wikilinks inside fenced and inline code left alone, and ![[embed]] left unchanged",
+        "With obsidian.enabled true (default) the rendered view hides front matter and shows wikilinks as plain text; with it false the Markdown is rendered unmodified",
+        "The reader toolbar Menu (reader.menu) has exactly one Toggle (settings.obsidian) bound to @AppStorage(\"obsidian.enabled\"); hidden for .txt files",
+        "CI on the branch is green"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B6",
+      "title": "Find in page with .searchable",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B5"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/TextSearch.swift",
+        "Packages/MDCore/Tests/MDCoreTests/TextSearchTests.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdview/Reader/SourceView.swift"
+      ],
+      "description": "Add find with SwiftUI .searchable(text:placement: .navigationBarDrawer(displayMode: .automatic)) on ReaderView (D10). MDCore.TextSearch.ranges(of:in:) returns case- and diacritic-insensitive match ranges. While the query is non-empty the reader shows SourceView with every match highlighted (background color) and the current one emphasized, scrolled into view; the search bar shows `n of N` (or `No matches`) and submitting moves to the next match, wrapping. Clearing or cancelling the search returns to the mode the user had. No custom find UI beyond that.",
+      "acceptance": [
+        "`make test` passes, including TextSearchTests (case/diacritic insensitive, overlapping text, empty query, no match, emoji/combining characters)",
+        "Typing a query shows highlighted matches in the source text with an `n of N` count; submit advances and wraps; cancel restores the previous Rendered/Source mode",
+        "CI on the branch is green"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B7",
+      "title": "Release prep and docs: icon, privacy manifest, licenses, README, RELEASE.md, review",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B2",
+        "B6"
+      ],
+      "owned_paths": [
+        "App/mdview/Assets.xcassets/AppIcon.appiconset/",
+        "App/mdview/PrivacyInfo.xcprivacy",
+        "project.yml",
+        "scripts/",
+        "README.md",
+        "THIRD_PARTY_NOTICES.md",
+        "docs/RELEASE.md",
+        "docs/ARCHITECTURE.md",
+        "docs/DEVELOPMENT.md"
+      ],
+      "description": "Make the app shippable and documented. Generate a simple single-size 1024 app icon with a committed script under scripts/ (no external services). Add PrivacyInfo.xcprivacy (NSPrivacyTracking false, no tracking domains, no collected data, required-reason API entries for what the app actually uses such as UserDefaults CA92.1). Set MARKETING_VERSION 0.1.0 and CURRENT_PROJECT_VERSION 1 in project.yml. Write THIRD_PARTY_NOTICES.md with the license text and copyright of every shipped component (Textual, swiftui-math, swift-concurrency-extras, Prism.js bundled inside Textual; all MIT) and link it from README. Rewrite README.md (what mdview does, features, privacy: no network, how to build, CI badge kept, license MIT) and add a short docs/ARCHITECTURE.md (DocumentGroup, Textual, MDCore, network-free image policy). Write docs/RELEASE.md: keving's signing steps (fill DEVELOPMENT_TEAM in the gitignored Config/Local.xcconfig, make open, automatic signing, run on device with Developer Mode, App Store Connect record, archive, upload, TestFlight) and an on-device checklist (open from Files, share/Open in from another app, Recents, iPad drag-drop, dark mode, largest text size, Obsidian toggle, find, a remote image link opening Safari). Finally review B1-B6 acceptance end to end and list any gap in the PR body.",
+      "acceptance": [
+        "`make test` and `make lint` pass and CI on the branch is green",
+        "PrivacyInfo.xcprivacy is included in the app target and declares no tracking and no collected data",
+        "THIRD_PARTY_NOTICES.md lists Textual, swiftui-math, swift-concurrency-extras and Prism.js with their MIT license text and copyright, and every dependency in Package.resolved is MIT/BSD/Apache-2.0 compatible with this MIT repo",
+        "README.md, docs/ARCHITECTURE.md and docs/RELEASE.md exist and match the shipped behavior; docs/RELEASE.md contains the on-device checklist; no Team ID or Apple account detail appears anywhere in the repo"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "B8",
+      "title": "Sign, install on iPhone and ship to TestFlight (human)",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "grok",
+      "effort": "",
+      "depends_on": [
+        "B7"
+      ],
+      "owned_paths": [
+        "Config/Local.xcconfig"
+      ],
+      "description": "keving follows docs/RELEASE.md on his own Mac: fill the unset DEVELOPMENT_TEAM (his Team ID) into the gitignored Config/Local.xcconfig, open the project with make open, enable automatic signing, install on his iPhone (Developer Mode on), then create the App Store Connect record, archive, upload and install from TestFlight. He runs the on-device checklist and files one bead per defect found. No bot action; the runner stops here and waits.",
+      "acceptance": [
+        "mdview runs on keving's iPhone from an Xcode install",
+        "A TestFlight build is available to the internal tester and installs",
+        "Each item of the on-device checklist in docs/RELEASE.md is marked pass or has a bead filed"
+      ],
+      "checks": [],
+      "no_code": true,
+      "needs_human": true
+    }
+  ],
+  "decisions": [
+    {
+      "id": "D1",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Repo public under MIT (LICENSE: 2026 Kevin Gould / Par72 Labs, LLC); gitleaks full-history scan before the flip; Actions macOS minutes free."
+    },
+    {
+      "id": "D2",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Remote images are never loaded inline: they render as a link that opens Safari on tap (MDCore.RemoteImages.linkify) and the Textual image loader is a local-file-only loader; the app stays network-free."
+    },
+    {
+      "id": "D3",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Bundle id us.par72.mdview; DEVELOPMENT_TEAM stays an unset build setting that keving fills in at B8."
+    },
+    {
+      "id": "D4",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "System SF font (default)."
+    },
+    {
+      "id": "D5",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Open .txt files too (Alternate handler for public.plain-text), shown as plain source text with no toggle."
+    },
+    {
+      "id": "D6",
+      "by": "keving's call (changed Oct 25, 2026)",
+      "decision": "Obsidian extras on by default with one setting to turn them off: @AppStorage(\"obsidian.enabled\") default true, one Toggle in a small reader toolbar menu. Narrowed by D11 to the cheap parts only: hide front matter and show [[wikilinks]] as plain text; embeds and callouts deferred."
+    },
+    {
+      "id": "D7",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "GitHub Actions CI."
+    },
+    {
+      "id": "D8",
+      "by": "keving's call (changed Oct 25, 2026)",
+      "decision": "Snapshot tests deferred: no snapshot target, no snapshot CI job; add them back after a working prototype exists."
+    },
+    {
+      "id": "D9",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Swift 6 strict concurrency."
+    },
+    {
+      "id": "D10",
+      "by": "keving (confirmed Oct 25, 2026)",
+      "decision": "Find-in-page via SwiftUI .searchable; matches are highlighted in the source text."
+    },
+    {
+      "id": "D11",
+      "by": "keving (Oct 25, 2026)",
+      "decision": "Use off-the-shelf components and keep functionality limited: build as little as possible. Textual for Markdown rendering and code highlighting, SwiftUI DocumentGroup for opening files and recents, .searchable for find; no custom parser, renderer, highlighter, file browser or recents store. Scope: open .md/.txt, Rendered/Source toggle, recents, dark mode, Dynamic Type, cheap Obsidian setting, find."
+    },
+    {
+      "id": "D12",
+      "by": "planner, following D11 (Oct 25, 2026)",
+      "decision": "Package choice: Textual 0.5.x (gonzalezreal/textual, MIT, active successor of MarkdownUI) pinned upToNextMinor; it brings swiftui-math and swift-concurrency-extras (MIT) and bundles Prism.js (MIT) for highlighting, so no Splash/HighlightSwift. Consequence: iOS 18.0 minimum (Textual requirement). Fallback if Textual blocks: MarkdownUI 2.4.1 (MIT, maintenance mode) plus Splash 0.16 (MIT)."
+    },
+    {
+      "id": "D13",
+      "by": "keving (Oct 25, 2026)",
+      "decision": "Development runs overnight with Grok only: every bead has model grok and the run uses --model grok, so every job dispatches with --tool grok. Builds and tests run in GitHub Actions; bots never boot the simulator on keving's Mac."
+    }
+  ],
+  "deferred": [
+    {
+      "item": "Snapshot tests (D8)",
+      "when": "after a working prototype (B8 done)",
+      "note": "test-only swift-snapshot-testing target, references recorded in CI only."
+    },
+    {
+      "item": "Obsidian embeds (![[...]]) and callouts (D11)",
+      "when": "after B8",
+      "note": "embeds currently show as literal text; callouts as block quotes."
+    },
+    {
+      "item": "Relative .md links, folder access for sibling images, footnotes, math, task-list checkboxes",
+      "when": "only if keving asks",
+      "note": "not built in this run (D11)."
+    }
+  ]
+}

@@ -1,0 +1,124 @@
+name: CI
+
+# Push on every branch. Docs-only commits do not start a run. There is no
+# pull_request trigger: the branch push is the run.
+on:
+  push:
+    paths-ignore:
+      - "docs/**"
+      - "**/*.md"
+  workflow_dispatch:
+
+# Keyed on the ref so a newer push cancels the run already in progress.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  build-and-test:
+    name: lint, device build, simulator launch
+    runs-on: macos-26
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+
+      - name: Select Xcode
+        run: |
+          set -euo pipefail
+          # macos-26 ships Xcode 26.6 as the default, with the iOS 26 SDK and a
+          # matching simulator runtime. iOS 26 satisfies the iOS 18 deployment target.
+          sudo xcode-select -s /Applications/Xcode_26.6.app
+          xcodebuild -version
+          xcodebuild -showsdks
+          sdk_major="$(xcodebuild -showsdks | sed -n 's/.*-sdk iphoneos\([0-9][0-9]*\).*/\1/p' | head -1)"
+          if [ -z "${sdk_major}" ] || [ "${sdk_major}" -lt 18 ]; then
+            echo "error: selected Xcode has no iOS 18+ SDK (got '${sdk_major:-none}')" >&2
+            exit 1
+          fi
+          xcodebuild -runFirstLaunch
+
+      - name: Cache SwiftPM and DerivedData
+        uses: actions/cache@v6
+        with:
+          path: |
+            .derivedData
+            ~/Library/Caches/org.swift.swiftpm
+            ~/Library/org.swift.swiftpm
+            Packages/MDCore/.build
+          key: ${{ runner.os }}-xcode-26.6-${{ hashFiles('**/Package.resolved', 'Packages/MDCore/Package.swift', 'project.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-xcode-26.6-
+
+      - name: List available simulators
+        run: xcrun simctl list devices available
+
+      - name: Choose simulator destination
+        id: simulator
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import json, os, re, subprocess, sys
+
+          sdk = subprocess.check_output(["xcodebuild", "-showsdks"], text=True)
+          versions = [(int(major), int(minor)) for major, minor in re.findall(r"-sdk iphonesimulator(\d+)\.(\d+)", sdk)]
+          if not versions:
+              sys.exit("error: selected Xcode has no iOS Simulator SDK")
+          major, minor = max(versions)
+          runtime_suffix = f"iOS-{major}-{minor}"
+
+          raw = subprocess.check_output(["xcrun", "simctl", "list", "devices", "available", "-j"], text=True)
+          devices_by_runtime = json.loads(raw).get("devices", {})
+          matches = []
+          for runtime, devices in devices_by_runtime.items():
+              if not runtime.endswith(runtime_suffix):
+                  continue
+              for device in devices:
+                  if device.get("isAvailable") is False:
+                      continue
+                  name = device.get("name", "")
+                  if name.startswith("iPhone"):
+                      matches.append(device)
+
+          chosen = next((device for device in matches if device.get("name") == "iPhone 17"), None)
+          if chosen is None and matches:
+              chosen = sorted(matches, key=lambda device: device.get("name", ""))[0]
+          if chosen is None:
+              print(f"error: no iPhone simulator for runtime {runtime_suffix}", file=sys.stderr)
+              for runtime in sorted(devices_by_runtime):
+                  print(runtime, file=sys.stderr)
+              sys.exit(1)
+
+          destination = f"platform=iOS Simulator,id={chosen['udid']}"
+          print(f"simulator: {chosen['name']} ({chosen['udid']}) on {runtime_suffix}")
+          print(f"MDVIEW_IOS_DESTINATION={destination}")
+          with open(os.environ["GITHUB_OUTPUT"], "a", encoding="utf-8") as handle:
+              handle.write(f"destination={destination}\n")
+          PY
+
+      - name: Lint
+        run: make lint
+
+      - name: Test
+        run: make test
+
+      - name: Simulator launch test
+        env:
+          CI: "true"
+          # The Makefile default is iPhone 16. That device is not installed on
+          # the macos-26 image; use the simulator chosen above.
+          MDVIEW_IOS_DESTINATION: ${{ steps.simulator.outputs.destination }}
+        run: make test-ios
+
+      - name: Upload xcresult
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: xcresult
+          path: .derivedData/**/*.xcresult
+          if-no-files-found: warn
+          retention-days: 14

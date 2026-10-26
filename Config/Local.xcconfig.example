@@ -1,0 +1,4 @@
+// Local overrides. `make gen` copies this to Config/Local.xcconfig when that file is missing.
+// Local.xcconfig is gitignored. Leave DEVELOPMENT_TEAM empty until device signing.
+PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview
+DEVELOPMENT_TEAM =
