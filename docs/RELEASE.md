@@ -16,7 +16,7 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 
 ## App Store Connect and TestFlight
 
-1. In App Store Connect, create an iOS app named mdview with bundle id `us.par72.mdview`. The SKU can be `mdview`.
+1. In App Store Connect, create an iOS app named `MdV: Markdown Viewer` (20/30 characters; see `docs/app-store/listing.md`) with bundle id `us.par72.mdview`. The SKU can be `mdview`.
 2. In Xcode, scheme mdview, Any iOS Device (arm64). Product, Archive. The scheme archives with the Release configuration.
 3. In the organizer, Distribute App, App Store Connect, Upload.
 
@@ -32,7 +32,7 @@ Privacy answers for the product page: the app does not track, does not collect d
 Mark each line after the TestFlight or Xcode install. File one bead per failure.
 
 - [ ] Open a `.md` file from Files. Rendered is the default. The title is the file name.
-- [ ] From another app, share or Open In a Markdown file. mdview opens it.
+- [ ] From another app, share or Open In a Markdown file. MdV opens it.
 - [ ] Quit, reopen, and open the same file from Recents.
 - [ ] On iPad, drag a Markdown file onto the app and it opens.
 - [ ] Dark Mode: rendered Markdown and the source view both follow the appearance.

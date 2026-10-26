@@ -1,11 +1,11 @@
 ---
-title: mdview
+title: MdV
 permalink: /
 ---
 
-# mdview
+# MdV
 
-mdview opens a Markdown file on your iPhone or iPad and shows it, rendered or as source. It works entirely on the device: no network access, no account, no analytics.
+MdV opens a Markdown file on your iPhone or iPad and shows it, rendered or as source. It works entirely on the device: no network access, no account, no analytics.
 
 - [Support](support/)
 - [Privacy policy](privacy/)

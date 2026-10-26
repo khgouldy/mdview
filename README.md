@@ -1,8 +1,8 @@
-# mdview
+# MdV (repo: mdview)
 
 [![CI](https://github.com/khgouldy/mdview/actions/workflows/ci.yml/badge.svg)](https://github.com/khgouldy/mdview/actions/workflows/ci.yml)
 
-mdview is an iOS app that opens a Markdown file and shows it. Nothing leaves the phone. There is no account, no sync, and no image download. One control switches Rendered and Source.
+MdV is an iOS app that opens a Markdown file and shows it. Nothing leaves the phone. There is no account, no sync, and no image download. One control switches Rendered and Source.
 
 Version 0.1.0 (build 1). iOS 18 and later, iPhone and iPad.
 

@@ -67,11 +67,37 @@ def check_no_truepredicate(plists):
     return [f"{path}: contains TRUEPREDICATE" for path, text in plists.items() if "TRUEPREDICATE" in text]
 
 
+DISPLAY_NAME_RE = re.compile(r"""^\s*APP_DISPLAY_NAME\s*:\s*["']?([^"'#\n]+?)["']?\s*(?:#.*)?$""", re.M)
+APP_NAME_HEADING_RE = re.compile(r"^##\s+App name\s*\n+\s*\*\*(.+?)\*\*", re.M)
+
+
+def check_display_name(project_yml, info_plist, listing):
+    """(e) One display name: Info.plist reads $(APP_DISPLAY_NAME), project.yml defines it,
+    and listing.md's App name starts with it."""
+    errors = []
+    if not re.search(r"<key>CFBundleDisplayName</key>\s*<string>\$\(APP_DISPLAY_NAME\)</string>", info_plist):
+        errors.append("App/mdview/Info.plist: CFBundleDisplayName must be $(APP_DISPLAY_NAME)")
+    match = DISPLAY_NAME_RE.search(project_yml)
+    if not match:
+        errors.append("project.yml: APP_DISPLAY_NAME is not defined")
+        return errors
+    name = match.group(1).strip()
+    heading = APP_NAME_HEADING_RE.search(listing)
+    if not heading:
+        errors.append("docs/app-store/listing.md: no bold App name under the App name heading")
+    elif not heading.group(1).startswith(name):
+        errors.append(
+            f"docs/app-store/listing.md: App name {heading.group(1)!r} does not start with APP_DISPLAY_NAME {name!r}"
+        )
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
     ("privacy manifests: no tracking, no collected data", "privacy"),
     ("no TRUEPREDICATE in Info.plist", "predicate"),
+    ("display name: Info.plist, project.yml and listing.md agree", "display"),
 ]
 
 
@@ -104,6 +130,11 @@ def run():
         "bundle": check_bundle_ids(team_files.get("project.yml", "")),
         "privacy": check_privacy_manifests(manifests),
         "predicate": check_no_truepredicate(info_plists),
+        "display": check_display_name(
+            team_files.get("project.yml", ""),
+            team_files.get("App/mdview/Info.plist", ""),
+            team_files.get("docs/app-store/listing.md", ""),
+        ),
     }
     failed = False
     for label, key in CHECKS:
@@ -146,6 +177,18 @@ def self_test():
         ("missing keys", check_privacy_manifests, {"p": plistlib.dumps({})}, {"p": good_privacy}),
         ("truepredicate", check_no_truepredicate, {"Info.plist": "<string>TRUEPREDICATE</string>"}, {"Info.plist": "<dict/>"}),
     ]
+    plist_ok = "<key>CFBundleDisplayName</key>\n\t<string>$(APP_DISPLAY_NAME)</string>"
+    plist_bad = "<key>CFBundleDisplayName</key>\n\t<string>mdview</string>"
+    yml = "settings:\n  base:\n    APP_DISPLAY_NAME: MdV\n"
+    listing = "## App name\n\n**MdV: Markdown Viewer** (20/30)\n"
+    for name, bad, good in [
+        ("display plist", (yml, plist_bad, listing), (yml, plist_ok, listing)),
+        ("display undefined", ("settings:\n", plist_ok, listing), (yml, plist_ok, listing)),
+        ("display listing", (yml, plist_ok, "## App name\n\n**mdview** (6/30)\n"), (yml, plist_ok, listing)),
+    ]:
+        assert check_display_name(*bad), f"self-test: {name} did not fail on its bad example"
+        assert not check_display_name(*good), f"self-test: {name} failed on its good example"
+        print(f"ok: self-test {name}")
     for name, check, bad, good in cases:
         assert check(bad), f"self-test: {name} did not fail on its bad example"
         assert not check(good), f"self-test: {name} failed on its good example: {check(good)}"

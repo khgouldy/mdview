@@ -1,4 +1,4 @@
-# mdview App Store listing
+# MdV App Store listing
 
 Everything App Store Connect asks for that doesn't need the Apple login. Character counts were measured with Python `len()` on the exact text below. App Store Connect counts characters, not bytes.
 
@@ -6,13 +6,24 @@ Bundle ID `us.par72.mdview`, version 0.1.0 (build 1), SKU `mdview`. iPhone and i
 
 ## App name
 
-**mdview** (6/30)
+**MdV: Markdown Viewer** (20/30)
 
-Name check, Oct 26, 2026, on the iTunes Search API (`term=mdview`, `entity=software` and `macSoftware`): no app is named exactly "mdview". Close names that already exist: "MDViewer — Quick Markdown" (iOS, Crocopliers OU), "MDView: Markdown Viewer" (Mac, RD Software Services LLP), "MDViewer — Markdown Viewer" (Mac). App names must be unique across the store, so "mdview" should be available, but App Store Connect only confirms that when the app record is created. If it is refused, use the fallback:
+The home screen name is `MdV`. It comes from `APP_DISPLAY_NAME` in `project.yml` through `CFBundleDisplayName` in `Info.plist`. The bundle ID, SKU, repo, scheme and target stay `mdview`. `make lint` fails if this heading and `APP_DISPLAY_NAME` disagree.
 
-**mdview: Markdown Reader** (23/30)
+Name check, Oct 26, 2026 (App Store search): no app is named MdV. "Midea MDV" (an HVAC remote) and "MDView: Markdown Viewer" exist. App names must be unique across the store, so only App Store Connect confirms availability, when the app record is created or renamed. If MdV is refused, pick another row below and change `APP_DISPLAY_NAME` (one line) and this heading together.
 
-The home screen name stays `mdview` (`CFBundleDisplayName` in `Info.plist`) either way.
+| # | Home-screen name | App Store name (chars) | Notes |
+| --- | --- | --- | --- |
+| 1 | **MdV** | **MdV: Markdown Viewer** (20) | **Chosen.** Three letters, reads as "Markdown Viewer". VoiceOver says "M D V". |
+| 2 | MDV | MDV: Markdown Viewer (20) | Reads like an acronym (DMV, Midea MDV) |
+| 3 | Mdown | Mdown: Markdown Viewer (22) | Nods to the `.mdown` extension; looks lowercase-ish |
+| 4 | Markd | Markd: Markdown Reader (22) | Short word mark; "marked" pun |
+| 5 | Marky | Marky: Markdown Viewer (22) | Friendly; less serious |
+| 6 | Margin | Margin: Markdown Reader (23) | A reading word; generic, likely taken |
+| 7 | Inkdown | Inkdown: Markdown Reader (24) | Distinctive; not obviously "md" |
+| 8 | Downmark | Downmark: Markdown Reader (25) | Inverts "Markdown"; long on the home screen |
+
+Rejected: MDView / MdView (clashes with "MDView: Markdown Viewer").
 
 ## Subtitle
 
@@ -29,14 +40,14 @@ Read Markdown files on iPhone and iPad, rendered or as source. Everything stays 
 ## Description
 
 ```text
-mdview opens a Markdown file and shows it. That's the whole app.
+MdV opens a Markdown file and shows it. That's the whole app.
 
-Pick a .md file in the Files app, from another app's share sheet, or from Recents, and mdview renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
+Pick a .md file in the Files app, from another app's share sheet, or from Recents, and MdV renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
 
 PRIVATE BY DESIGN
-• No network access. mdview never connects to the internet.
+• No network access. MdV never connects to the internet.
 • No account, no sign-in, no analytics, no ads, no tracking.
-• Your files never leave your device. mdview reads them in place and never changes them.
+• Your files never leave your device. MdV reads them in place and never changes them.
 • Web images are not downloaded. They show as a link you can tap to open in Safari. Images stored next to your document are shown inline.
 
 FEATURES
@@ -48,12 +59,12 @@ FEATURES
 • iPhone and iPad, including drag and drop on iPad.
 
 WHAT IT ISN'T
-mdview is a viewer, not an editor. It doesn't sync, and it doesn't manage a library of notes. It opens the file you choose and gets out of the way.
+MdV is a viewer, not an editor. It doesn't sync, and it doesn't manage a library of notes. It opens the file you choose and gets out of the way.
 
-mdview is open source under the MIT license: github.com/khgouldy/mdview
+MdV is open source under the MIT license: github.com/khgouldy/mdview
 ```
 
-1488/4000
+1470/4000
 
 ## Keywords
 
@@ -61,7 +72,7 @@ mdview is open source under the MIT license: github.com/khgouldy/mdview
 md,viewer,notes,readme,preview,offline,wikilinks,yaml,front matter,plain text,txt,docs,code,syntax
 ```
 
-98/100. Comma separated, no spaces after commas. Words already in the name and subtitle (mdview, markdown, private, reader) are left out because Apple indexes those anyway. Third-party trademarks (Obsidian, GitHub) are left out of the keywords to avoid a guideline 2.3.7 rejection; the description mentions Obsidian only to describe a feature.
+98/100. Comma separated, no spaces after commas. Words already in the name and subtitle (MdV, markdown, private, reader) are left out because Apple indexes those anyway. Third-party trademarks (Obsidian, GitHub) are left out of the keywords to avoid a guideline 2.3.7 rejection; the description mentions Obsidian only to describe a feature.
 
 ## Categories
 
@@ -101,7 +112,7 @@ Answer None / No to every question:
 | User-generated content (social, messaging) | No |
 | Loot boxes, in-app purchases, advertising, parental controls, age assurance | No |
 
-Expected rating: 4+ (the lowest band). Note for the reviewer and for the "user-generated content" question: mdview displays files the user opens from their own device. It has no unrestricted web access (no browser, no network), no sharing between users, and no content from the developer beyond the app itself. Displaying the user's own local files is not user-generated content in Apple's sense, so the answer is No.
+Expected rating: 4+ (the lowest band). Note for the reviewer and for the "user-generated content" question: MdV displays files the user opens from their own device. It has no unrestricted web access (no browser, no network), no sharing between users, and no content from the developer beyond the app itself. Displaying the user's own local files is not user-generated content in Apple's sense, so the answer is No.
 
 ## App privacy (privacy nutrition label)
 
@@ -136,9 +147,9 @@ Does the app contain, show, or access third-party content? No. It shows only fil
 - Notes:
 
 ```text
-mdview is a local Markdown viewer. No login, account, or network access is needed.
+MdV is a local Markdown viewer. No login, account, or network access is needed.
 
-To test: launch mdview. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has one setting, Obsidian extras, which hides YAML front matter and shows [[wikilinks]] as plain text.
+To test: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has one setting, Obsidian extras, which hides YAML front matter and shows [[wikilinks]] as plain text.
 
 The app never uses the network. Web images in a document are shown as a link that opens Safari only when tapped. The app collects no data.
 ```
