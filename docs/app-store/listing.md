@@ -119,7 +119,14 @@ Does the app contain, show, or access third-party content? No. It shows only fil
 
 ## Pricing and availability
 
-Not decided here. Set in App Store Connect.
+- Availability: United States, Canada, and Mexico only. Deselect every other country or region in App Store Connect.
+- The app is not offered in the European Union, so the Digital Services Act trader status and trader contact information are not needed. If EU storefronts are added later, the DSA trader declaration must be completed first.
+- Price: set in App Store Connect.
+
+## Apple account facts
+
+- Bundle ID `us.par72.mdview` is registered with Apple.
+- The signing Team ID is set in the gitignored `Config/Local.xcconfig` (not committed, per `docs/RELEASE.md`).
 
 ## App Review information
 
