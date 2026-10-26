@@ -72,7 +72,7 @@ schemes:
     build:
       targets:
         mdview: all
-        mdviewUITests: test
+        mdviewUITests: testing
     run:
       config: Debug
     test:

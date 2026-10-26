@@ -1,4 +1,4 @@
-.PHONY: help tools gen lint format test build-ios test-ios open clean
+.PHONY: help tools gen lint format test build-ios test-ios archive upload open clean
 
 SCHEME = mdview
 PROJECT = mdview.xcodeproj
@@ -6,6 +6,11 @@ DERIVED_DATA = .derivedData
 RESOLVED = $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 IOS_DESTINATION = generic/platform=iOS
 MDVIEW_IOS_DESTINATION ?= platform=iOS Simulator,name=iPhone 16
+BUILD_DIR ?= $(HOME)/GrokBot/builds/mdview
+ARCHIVE_PATH = $(BUILD_DIR)/mdview.xcarchive
+# Env file defining APPSTORE_CONNECT_KEY_ID, APPSTORE_CONNECT_ISSUER_ID, APPSTORE_CONNECT_KEY_PATH.
+ASC_ENV ?= $(HOME)/.appstoreconnect/rosterhq.env
+ASC_AUTH = -allowProvisioningUpdates -authenticationKeyPath "$$(eval echo $$APPSTORE_CONNECT_KEY_PATH)" -authenticationKeyID "$$APPSTORE_CONNECT_KEY_ID" -authenticationKeyIssuerID "$$APPSTORE_CONNECT_ISSUER_ID"
 
 help:
 	@echo "mdview targets:"
@@ -16,6 +21,8 @@ help:
 	@echo "  test       swift test Packages/MDCore, then an unsigned generic iOS build"
 	@echo "  build-ios  xcodebuild for generic/platform=iOS with signing disabled"
 	@echo "  test-ios   Simulator XCUITest. Refuses unless CI=true or MDVIEW_ALLOW_SIMULATOR=1"
+	@echo "  archive    Signed Release archive into BUILD_DIR (App Store Connect API key from ASC_ENV)"
+	@echo "  upload     Export the archive and upload it to App Store Connect"
 	@echo "  open       Generate the project and open it in Xcode"
 	@echo "  clean      Remove the generated project and local build products"
 
@@ -71,6 +78,32 @@ test-ios: tools gen
 		-skipPackagePluginValidation \
 		-skipMacroValidation \
 		CODE_SIGNING_ALLOWED=NO
+
+archive: tools gen
+	@mkdir -p "$(BUILD_DIR)"
+	@set -a; . "$(ASC_ENV)"; set +a; \
+	xcodebuild archive \
+		-project $(PROJECT) \
+		-scheme $(SCHEME) \
+		-configuration Release \
+		-destination '$(IOS_DESTINATION)' \
+		-archivePath "$(ARCHIVE_PATH)" \
+		-skipPackagePluginValidation \
+		-skipMacroValidation \
+		$(ASC_AUTH)
+
+upload:
+	@test -d "$(ARCHIVE_PATH)" || { echo "error: run make archive first" >&2; exit 1; }
+	@team=$$(sed -n 's/^DEVELOPMENT_TEAM *= *//p' Config/Local.xcconfig); \
+	test -n "$$team" || { echo "error: set DEVELOPMENT_TEAM in Config/Local.xcconfig" >&2; exit 1; }; \
+	cp -f Config/ExportOptions.plist "$(BUILD_DIR)/ExportOptions.plist"; \
+	/usr/libexec/PlistBuddy -c "Add :teamID string $$team" "$(BUILD_DIR)/ExportOptions.plist"; \
+	set -a; . "$(ASC_ENV)"; set +a; \
+	xcodebuild -exportArchive \
+		-archivePath "$(ARCHIVE_PATH)" \
+		-exportOptionsPlist "$(BUILD_DIR)/ExportOptions.plist" \
+		-exportPath "$(BUILD_DIR)/export" \
+		$(ASC_AUTH)
 
 open: gen
 	open $(PROJECT)
