@@ -45,19 +45,23 @@ PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview
 DEVELOPMENT_TEAM =
 ```
 
-`Config/Local.xcconfig` is gitignored. Leave the team empty. Device signing fills it in later, on a machine that has the Apple account. Do not look up or commit a Team ID.
+`Config/Local.xcconfig` is gitignored. Leave the team empty in git. Device signing is in `docs/RELEASE.md`. Do not look up or commit a Team ID or an Apple account.
 
 ## Project layout
 
 `project.yml` is the XcodeGen spec. The app target links two packages: Textual (`https://github.com/gonzalezreal/textual`, `.upToNextMinor(from: "0.5.0")`) and the local package `Packages/MDCore`. MDCore has no dependencies. The resolved pins are committed at `mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`. The rest of the generated project is gitignored.
 
-`App/mdview/mdviewApp.swift` is a `DocumentGroup(viewing: TextDocument.self)` scene. The viewer shows the decoded string. `TextDocument` reads an imported `net.daringfireball.markdown` UTI and `public.plain-text`.
+`App/mdview/mdviewApp.swift` is a `DocumentGroup(viewing: TextDocument.self)` scene. `ReaderView` shows Rendered Markdown (Textual) or the original source. `TextDocument` reads an imported `net.daringfireball.markdown` UTI and `public.plain-text`. Behavior, the image policy, and the MDCore types are in `docs/ARCHITECTURE.md`.
+
+`MARKETING_VERSION` is 0.1.0 and `CURRENT_PROJECT_VERSION` is 1. `App/mdview/PrivacyInfo.xcprivacy` is a resource of the app target: tracking off, no collected data, UserDefaults reason CA92.1.
+
+The app icon is a single 1024 image, `App/mdview/Assets.xcassets/AppIcon.appiconset/AppIcon.png`. Regenerate it with `python3 scripts/generate_app_icon.py` (Python standard library only).
 
 `MDCore.TextDecoding.decode(_:)` tries UTF-8, then UTF-16 if the bytes start with `FF FE` or `FE FF`, then Windows-1252.
 
 ## Tests
 
-MDCore tests run on the Mac with `swift test`. They cover UTF-8, UTF-16 with a BOM (little and big endian), and Windows-1252 (including the euro byte `0x80`).
+MDCore tests run on the Mac with `swift test`. They cover text decoding (UTF-8, UTF-16 with a BOM, Windows-1252 including the euro byte `0x80`), remote-image rewriting, the file-URL image policy, the Obsidian preprocessor, and find ranges.
 
 `App/mdviewUITests/LaunchTests.swift` launches the app and checks that it reaches the foreground. That test runs only through `make test-ios`, which CI calls. `make test` does not run it.
 
