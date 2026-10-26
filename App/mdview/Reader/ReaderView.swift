@@ -24,6 +24,7 @@ struct ReaderView: View {
     let document: TextDocument
 
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
+    @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @Environment(\.documentConfiguration) private var documentConfiguration
 
     var body: some View {
@@ -35,9 +36,23 @@ struct ReaderView: View {
                     ToolbarItem(placement: .bottomBar) {
                         modePicker
                     }
+                    ToolbarItem(placement: .topBarTrailing) {
+                        readerMenu
+                    }
                 }
             }
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
+    }
+
+    private var readerMenu: some View {
+        Menu {
+            Toggle("Obsidian extras", isOn: $obsidianEnabled)
+                .accessibilityIdentifier("settings.obsidian")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityIdentifier("reader.menu")
+        .accessibilityLabel("Settings")
     }
 
     @ViewBuilder
