@@ -23,7 +23,7 @@ mdview reads the Markdown and text files you choose to open, through the iOS doc
 
 ## Network access
 
-mdview does not connect to the internet. It contains no networking code, no third-party SDKs, no crash reporters, and no analytics.
+mdview does not connect to the internet. It contains no networking code and no analytics, advertising, or crash-reporting SDKs. The only third-party code is open-source Markdown rendering libraries that run on the device.
 
 ## Settings stored on your device
 
