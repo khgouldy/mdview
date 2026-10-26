@@ -45,7 +45,7 @@ PRODUCT_BUNDLE_IDENTIFIER = us.par72.mdview
 DEVELOPMENT_TEAM =
 ```
 
-`Config/Local.xcconfig` is gitignored. Leave the team empty in git. Device signing is in `docs/RELEASE.md`. Do not look up or commit a Team ID or an Apple account.
+`Config/Local.xcconfig` is gitignored and is the only place the team is set: `project.yml` sets no `DEVELOPMENT_TEAM` or `CODE_SIGN_IDENTITY` for the app target. Leave the team empty in git. Device signing is in `docs/RELEASE.md`. Do not look up or commit a Team ID or an Apple account.
 
 ## Project layout
 

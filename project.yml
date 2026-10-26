@@ -13,9 +13,6 @@ settings:
     TARGETED_DEVICE_FAMILY: "1,2"
     SUPPORTS_MACCATALYST: NO
     CODE_SIGN_STYLE: Automatic
-    CODE_SIGNING_REQUIRED: NO
-    CODE_SIGN_IDENTITY: "-"
-    DEVELOPMENT_TEAM: ""
   configs:
     Debug:
       SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
@@ -51,9 +48,6 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
-        CODE_SIGNING_REQUIRED: NO
-        CODE_SIGN_IDENTITY: "-"
-        DEVELOPMENT_TEAM: ""
     configFiles:
       Debug: Config/Local.xcconfig
       Release: Config/Local.xcconfig

@@ -8,11 +8,11 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 
 1. In `Config/Local.xcconfig`, set `DEVELOPMENT_TEAM` to the Team ID from the Apple Developer account that will sign the app. Leave `PRODUCT_BUNDLE_IDENTIFIER` as `us.par72.mdview`. If the file is missing, `make gen` copies it from `Config/Local.xcconfig.example`.
 2. `make open`.
-3. Select the mdview target, Signing & Capabilities. Turn on Automatically manage signing and choose that team. The project already sets `CODE_SIGN_STYLE` to Automatic.
+3. Select the mdview target, Signing & Capabilities. Automatically manage signing should already be on with your team. The project sets `CODE_SIGN_STYLE` to Automatic and takes `DEVELOPMENT_TEAM` from `Config/Local.xcconfig`, so `make gen` keeps the team. A team picked only in Xcode is lost on the next `make gen`.
 4. On the iPhone, turn on Developer Mode (Settings, Privacy & Security, Developer Mode) and trust the computer.
 5. Choose the phone as the run destination and run from Xcode. The first launch asks to trust the developer on the device.
 
-`make test` and CI keep signing off (`CODE_SIGNING_ALLOWED=NO`, empty team). Do not put the Team ID into `project.yml`.
+`project.yml` sets no team and no signing identity for the app target. `make build-ios`, `make test`, `make test-ios`, and CI pass `CODE_SIGNING_ALLOWED=NO`, so they build unsigned without a team. Do not put the Team ID into `project.yml`.
 
 ## App Store Connect and TestFlight
 
@@ -20,6 +20,8 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 2. In Xcode, scheme mdview, Any iOS Device (arm64). Product, Archive. The scheme archives with the Release configuration.
 3. In the organizer, Distribute App, App Store Connect, Upload.
 4. When the build finishes processing, add it to an internal TestFlight group and install it on the phone.
+
+Export compliance: `Info.plist` sets `ITSAppUsesNonExemptEncryption` to `NO` (the app uses no encryption), so App Store Connect does not ask the encryption questions for each build.
 
 Privacy answers for the product page: the app does not track, does not collect data, and does not use the network. The manifest is `App/mdview/PrivacyInfo.xcprivacy` (`NSPrivacyTracking` false, empty tracking domains, empty collected-data types, UserDefaults reason `CA92.1`).
 
