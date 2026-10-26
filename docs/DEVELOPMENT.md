@@ -60,3 +60,19 @@ DEVELOPMENT_TEAM =
 MDCore tests run on the Mac with `swift test`. They cover UTF-8, UTF-16 with a BOM (little and big endian), and Windows-1252 (including the euro byte `0x80`).
 
 `App/mdviewUITests/LaunchTests.swift` launches the app and checks that it reaches the foreground. That test runs only through `make test-ios`, which CI calls. `make test` does not run it.
+
+## CI
+
+`.github/workflows/ci.yml` is the only place the iOS Simulator runs. A push to any branch starts the workflow, except when every changed file is under `docs/**` or matches `**/*.md`. `workflow_dispatch` starts the same job and takes no inputs. A newer push to the same ref cancels the run already in progress. The job times out after 30 minutes.
+
+The job runs on the pinned `macos-26` runner. It selects Xcode 26.6 with `xcode-select` (iOS 26 SDK, which covers the iOS 18 deployment target), prints `xcrun simctl list devices available`, then runs `make lint`, `make test`, and `CI=true make test-ios`. `make test-ios` runs `mdviewUITests` with parallel testing off. The workflow sets `MDVIEW_IOS_DESTINATION` to an iPhone simulator installed for that Xcode. SwiftPM and `.derivedData` are cached between runs.
+
+The repository is public, so GitHub-hosted macOS minutes cost nothing.
+
+A failed run uploads the `.xcresult` bundle as the artifact named `xcresult`. Download it with:
+
+```bash
+gh run download <run-id> -n xcresult
+```
+
+The run id is the number printed by `gh run list`.
