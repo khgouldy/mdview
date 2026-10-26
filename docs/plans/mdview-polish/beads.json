@@ -1,0 +1,825 @@
+{
+  "feature": "mdview-polish",
+  "title": "Feature: mdview polish, accessibility, \"open from anywhere\", and delightful reader features",
+  "checks": [
+    "make test",
+    "make lint"
+  ],
+  "verify": "agent",
+  "open_questions": [
+    {
+      "question": "Q1: Allow any network use for opening links (mdview://open?url= one-time fetch of raw GitHub Markdown)?",
+      "default": "No. Keep zero network and the 'never connects' claim; if links matter later, use Universal Links on a khgouldy.github.io user site with the content in the link fragment (no app request)."
+    },
+    {
+      "question": "Q2: Can Grok Bot send Markdown as a .md file attachment (MIME text/markdown) instead of, or as well as, inline text?",
+      "default": "Yes, change the bot (outside this repo). It makes Share -> mdview work in any chat app with a share sheet."
+    },
+    {
+      "question": "Q3: Pull the Action extension (V1, V2) into the Nov 10 launch build?",
+      "default": "No. Launch with Paste Markdown and the How to Open Files guide; submit 0.2.0 with the extension right after launch."
+    },
+    {
+      "question": "Q4: Build the Quick Look preview extension anyway, for iOS 18-26 users?",
+      "default": "Not now. iOS 27 does not invoke third-party Markdown preview extensions (FB24481377). Revisit if 27.x fixes it."
+    },
+    {
+      "question": "Q5: Keep the launch version at 0.1.0 (build 2)?",
+      "default": "Yes. v0.2 ships as 0.2.0 build 3."
+    },
+    {
+      "question": "Q6: Turn on math rendering by default in v0.2?",
+      "default": "No, off by default: dollar amounts would render as math."
+    },
+    {
+      "question": "Q7: Show 'Save to Files' in the pasted reader (mdview then writes a new file the user chose)?",
+      "default": "Yes. It never changes existing files, so 'never changes them' still holds."
+    },
+    {
+      "question": "Q8: If iPad drag and drop fails on device (L12), drop the claim rather than fix it before launch?",
+      "default": "Yes, drop the claim for launch and file a v0.2 bead."
+    },
+    {
+      "question": "Q9: Are there localized App Store listings kept only in App Store Connect?",
+      "default": "Assume none; if there are, keving copies the L11 listing changes there by hand in L12."
+    }
+  ],
+  "phases": [
+    {
+      "name": "launch",
+      "version": "0.1.0 (2)",
+      "beads": [
+        "L1",
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "L6",
+        "L7",
+        "L8",
+        "L9",
+        "L10",
+        "L11",
+        "L12"
+      ],
+      "stop_after": "L12"
+    },
+    {
+      "name": "v0.2",
+      "version": "0.2.0 (3)",
+      "beads": [
+        "V1",
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6",
+        "V7",
+        "V8",
+        "V9",
+        "V10",
+        "V11"
+      ],
+      "stop_after": "V11"
+    }
+  ],
+  "deferred": [
+    {
+      "item": "Quick Look preview extension",
+      "when": "after iOS 27.x fixes FB24481377, or if keving wants it for iOS 26 devices (Q4)",
+      "note": "iOS 27 does not invoke third-party preview extensions for net.daringfireball.markdown."
+    },
+    {
+      "item": "mdview:// URL scheme and Universal Links",
+      "when": "after Q1",
+      "note": "Network fetch rejected by default; the offline options are in plan 3.6."
+    },
+    {
+      "item": "Relative .md links, wikilink resolution, folder/vault browsing and cross-file search",
+      "when": "after v0.2, if asked",
+      "note": "Needs a folder picker and a security-scoped bookmark."
+    },
+    {
+      "item": "Spotlight indexing, App Intents, home screen widget, Handoff",
+      "when": "post v0.2",
+      "note": "Each needs a recents store and/or an App Group; Handoff has no Mac target."
+    },
+    {
+      "item": "Mermaid diagrams",
+      "when": "only if a native, offline Swift renderer appears",
+      "note": "Every option needs a WebView, which lint forbids."
+    }
+  ],
+  "beads": [
+    {
+      "key": "L1",
+      "title": "Add UI-test build and app config checks to the quality gate",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [],
+      "owned_paths": [
+        "Makefile",
+        "scripts/check_app_config.py",
+        "App/mdviewUITests/ReaderLauncher.swift",
+        "App/mdviewUITests/ReaderFixture.swift",
+        "App/mdviewUITests/ScreenshotTests.swift",
+        "docs/DEVELOPMENT.md",
+        "AGENTS.md",
+        "CLAUDE.md"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L1. Add `make build-tests` (xcodebuild build-for-testing, generic/platform=iOS, CODE_SIGNING_ALLOWED=NO) and make `make test` run it after `swift test`, so UI test code compiles locally without a simulator. Add `scripts/check_app_config.py` (Python stdlib, one function per check, --self-test) and run it from `make lint` and `make check-config`. First checks: no team ID in tracked files, bundle IDs under us.par72.mdview, privacy manifests say no tracking and no collected data, no TRUEPREDICATE activation rules. Factor the screenshot launch env into `ReaderLauncher` and add `ReaderFixture.kitchenSink` (headings, lists, task items, a 7-column table with last header 'Owner', a Swift block, a long file name). Never run make test-ios or boot a simulator.",
+      "acceptance": [
+        "`make test` exits 0 and its log shows `build-for-testing` compiling the mdviewUITests target with no DEVELOPMENT_TEAM set",
+        "`make lint` exits 0 and prints `ok:` lines from scripts/check_app_config.py",
+        "`python3 scripts/check_app_config.py --self-test` exits 0, and each check fails on its built-in bad example",
+        "ScreenshotTests builds using ReaderLauncher, with the same five attachment names as before",
+        "docs/DEVELOPMENT.md, AGENTS.md and CLAUDE.md document build-tests, check-config and the new make test"
+      ],
+      "checks": [
+        "python3 scripts/check_app_config.py --self-test"
+      ],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L2",
+      "title": "Add dark and increased-contrast accent color variants",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L1"
+      ],
+      "owned_paths": [
+        "App/mdview/Assets.xcassets/AccentColor.colorset/Contents.json",
+        "scripts/check_app_config.py",
+        "docs/ARCHITECTURE.md"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L2. #2E6B4A has no dark variant (2.69:1 on #1C1C1E). Add appearances: dark #5BBF8A, light high contrast #1F4A33, dark high contrast #7AD3A3; light stays #2E6B4A. Add a WCAG contrast check to check_app_config.py that parses the colorset (float or 0xNN components) and enforces ≥4.5 against the light greys (#FFFFFF, #F2F2F7, #E5E5EA) and dark greys (#000000, #1C1C1E, #2C2C2E), and ≥3.0 against #3A3A3C.",
+      "acceptance": [
+        "AccentColor.colorset/Contents.json has a universal color plus dark, high-contrast light and high-contrast dark variants with the values in plan L2",
+        "`make lint` prints the contrast ratio of each variant against each background and exits 0",
+        "`python3 scripts/check_app_config.py --self-test` includes a case where a colorset with only #2E6B4A fails the dark check",
+        "`make test` exits 0"
+      ],
+      "checks": [
+        "python3 scripts/check_app_config.py --self-test"
+      ],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L3",
+      "title": "Make rendered headings and lists VoiceOver-friendly",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "opus",
+      "effort": "",
+      "depends_on": [
+        "L1"
+      ],
+      "owned_paths": [
+        "App/mdview/Reader/ReaderStyle.swift",
+        "App/mdview/Reader/RenderedView.swift",
+        "App/mdviewUITests/ReaderAccessibilityTests.swift",
+        "docs/ARCHITECTURE.md"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L3. Textual has no accessibility code. Add `ReaderStyle: StructuredText.Style` (the GitHub members, but with AccessibleHeadingStyle (.isHeader, .accessibilityHeading(level), combined element), AccessibleListItemStyle (combined element) and QuietBulletMarker (hierarchical disc/circle/square hidden from VoiceOver; ordered numbers stay). RenderedView applies ReaderStyle and turns Textual's text selection off while VoiceOver is running (decision K3). Add a CI-only UI test. Links inside headings must stay tappable.",
+      "acceptance": [
+        "RenderedView applies `.textual.structuredTextStyle(ReaderStyle())` and no other structured text style",
+        "ReaderStyle.swift defines AccessibleHeadingStyle with `.accessibilityAddTraits(.isHeader)` and `.accessibilityHeading`, AccessibleListItemStyle with `.accessibilityElement(children: .combine)`, and a bullet marker with `.accessibilityHidden(true)`",
+        "RenderedView reads `accessibilityVoiceOverEnabled` and applies `.textual.textSelection(.disabled)` when it is true and `.enabled` otherwise",
+        "App/mdviewUITests/ReaderAccessibilityTests.swift asserts the 'Overview' heading is hittable and no list item label contains 'circle'; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L4",
+      "title": "Scroll wide tables and fix accessibility-size truncation",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L3"
+      ],
+      "owned_paths": [
+        "App/mdview/Reader/ReaderStyle.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/DynamicTypeTests.swift"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L4. GitHubTableStyle wraps wide tables. Add ScrollingTableStyle (the GitHub look inside Textual's `Overflow`, max width 1.5× the container, never a bare horizontal ScrollView) and AccessibleTableCellStyle (combined cell, header trait on row 0, 'Row r, column c' custom content). At accessibility sizes the mode picker becomes a menu picker (same identifier); otherwise it gets Large Content Viewer. The title moves to a principal toolbar item with up to 2 lines (3 at accessibility sizes), middle truncation, the full name as its label, and Large Content Viewer. The search count wraps.",
+      "acceptance": [
+        "ReaderStyle uses ScrollingTableStyle (built on `Overflow`) and AccessibleTableCellStyle (`.isHeader` when row == 0, `.accessibilityCustomContent` with the row and column)",
+        "ReaderView switches the `reader.modePicker` picker to `.pickerStyle(.menu)` when `dynamicTypeSize.isAccessibilitySize`, and keeps the segmented control otherwise",
+        "ReaderView has a `.principal` toolbar title with `.accessibilityShowsLargeContentViewer()` and `.accessibilityLabel(fileName)`",
+        "App/mdviewUITests/DynamicTypeTests.swift launches at UICTContentSizeCategoryAccessibilityXXXL and asserts the picker is hittable, the title label is the full file name, and the 'Owner' column header becomes hittable after a swipe; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L5",
+      "title": "Mark the current find match without color and honor Reduce Motion",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L1"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/FindHighlight.swift",
+        "Packages/MDCore/Tests/MDCoreTests/FindHighlightTests.swift",
+        "App/mdview/Reader/SourceView.swift",
+        "App/mdview/Motion.swift",
+        ".swiftlint.yml"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L5. Today the current match differs from other matches only by yellow intensity. Add MDCore FindHighlight.styles(matchCount:current:differentiateWithoutColor:): the current match is strong fill, thick underline and bold; others are soft fill, with a dotted underline when Differentiate Without Color is on. SourceView maps the styles to attributes and repaints when the setting changes. With Reduce Motion, scroll to the current match without animation. Add Motion.animate and a swiftlint rule `use_motion_helper` that bans `withAnimation(` elsewhere.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes FindHighlightTests: zero matches, one match, current at the first and last index, out-of-range current, DWC on and off",
+        "SourceView reads `accessibilityDifferentiateWithoutColor`, and SourceRenderSignature includes it",
+        "SourceTextView scrolls with `setContentOffset(_:animated: false)` when `UIAccessibility.isReduceMotionEnabled`",
+        ".swiftlint.yml has a `use_motion_helper` custom rule for `withAnimation\\(` that excludes App/mdview/Motion.swift; `make lint` exits 0",
+        "`make test` exits 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L6",
+      "title": "Render task lists as read-only checkboxes",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L1"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/TaskListPreprocessor.swift",
+        "Packages/MDCore/Sources/MDCore/TaskMarker.swift",
+        "Packages/MDCore/Sources/MDCore/RenderPipeline.swift",
+        "Packages/MDCore/Tests/MDCoreTests/TaskListPreprocessorTests.swift",
+        "Packages/MDCore/Tests/MDCoreTests/RenderPipelineTests.swift",
+        "App/mdview/Reader/TaskCheckbox.swift",
+        "App/mdview/Reader/LocalImageLoader.swift",
+        "App/mdview/Reader/RenderedView.swift"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L6. Foundation's parser has no task lists, so `- [ ]` shows as text. TaskListPreprocessor rewrites a list item's leading [ ]/[x]/[X] into `![Not done](x-mdview-task:unchecked)` / `![Done](x-mdview-task:checked)`, skipping fenced and indented code. RenderPipeline.prepare(_:obsidian:math:) runs Obsidian, then TaskList, then RemoteImages; RenderedView calls only it. LocalImageLoader returns AnyAttachment and handles x-mdview-task: URLs with TaskCheckbox (an SF Symbol about 1 em, 'Done'/'Not done' labels, not tappable) before ImagePolicy, which stays file-only. If the attachment misaligns, fall back to ☐/☑ glyphs and say so in the handoff.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes TaskListPreprocessor tests: unchecked, checked and uppercase X; -, *, + and ordered markers; nesting; fenced code unchanged; mid-sentence [ ] unchanged; `[x](url)` unchanged; CRLF kept",
+        "RenderPipelineTests show front matter removed before the task rewrite and remote images still linkified",
+        "An ImagePolicy test asserts `x-mdview-task:checked` is rejected (policy unchanged)",
+        "RenderedView.markdownForDisplay calls RenderPipeline.prepare, and LocalImageLoader returns TaskCheckbox for x-mdview-task URLs before any file access",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L7",
+      "title": "Declare every Markdown extension and expose the Documents folder in Files",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L1"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/MarkdownFileTypes.swift",
+        "Packages/MDCore/Tests/MDCoreTests/MarkdownFileTypesTests.swift",
+        "App/mdview/Info.plist",
+        "App/mdview/Reader/ReaderView.swift",
+        "scripts/check_app_config.py"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L7. Add MDCore MarkdownFileTypes (md, markdown, mdown, mkd, mkdn, mdwn, mdtxt, mdtext; txt and text are plain; MIME text/markdown and text/x-markdown), with literals between BEGIN/END markers. ReaderView.showsModePicker uses isMarkdown(pathExtension:). Info.plist: the imported net.daringfireball.markdown lists every extension and both MIME types; the Markdown document type uses LSHandlerRank Default (plain text stays Alternate); add UIFileSharingEnabled YES. Never export the UTI; do not invent public.markdown. check_app_config.py checks that Info.plist and MarkdownFileTypes match.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes MarkdownFileTypes tests for each extension, uppercase (MD), txt and an unknown extension (nil)",
+        "App/mdview/Info.plist declares all eight Markdown extensions and both MIME types, Markdown LSHandlerRank Default, plain text Alternate, UIFileSharingEnabled true and LSSupportsOpeningDocumentsInPlace true",
+        "`make lint` runs the extension-list check and exits 0; changing one extension in MarkdownFileTypes.swift makes it fail",
+        "ReaderView no longer hard-codes Markdown extensions",
+        "`make test` exits 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L8",
+      "title": "Add a launch screen with a How to Open Files guide",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L7"
+      ],
+      "owned_paths": [
+        "App/mdview/mdviewApp.swift",
+        "App/mdview/Help/OpenFilesHelpView.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/LaunchSceneTests.swift"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L8. Add a DocumentGroupLaunchScene (iOS 18) with an accessible background and a 'How to Open Files' button (`launch.help`) that opens OpenFilesHelpView in a sheet. The guide covers only shipped paths: Share from a chat or mail app, copy and paste, Save to Files first, the Files app, and iPad drag and drop (marked for removal if L12 fails), plus a 'never connects to the internet' footer. Headers use the header trait and there is no truncation at accessibility sizes. The reader menu gets the same entry (`reader.help`). Record the iOS 27 overlayAccessoryView fallback in a comment; do not build it.",
+      "acceptance": [
+        "mdviewApp declares a DocumentGroupLaunchScene with a button whose identifier is `launch.help`",
+        "OpenFilesHelpView has sections 'From a chat or mail app', 'Copy and paste', 'Save to Files first', 'Files app' and 'iPad', plus a Done button `help.done`",
+        "The reader menu has a `reader.help` item that presents OpenFilesHelpView",
+        "App/mdviewUITests/LaunchSceneTests.swift taps launch.help, finds 'Copy and paste' and dismisses; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L9",
+      "title": "Add Paste Markdown",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "opus",
+      "effort": "",
+      "depends_on": [
+        "L8"
+      ],
+      "owned_paths": [
+        "App/mdview/mdviewApp.swift",
+        "App/mdview/Paste/PastedReaderView.swift",
+        "App/mdview/TextDocument.swift",
+        "App/mdview/ReaderContext.swift",
+        "App/mdview/ScreenshotLaunch.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/PasteTests.swift"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L9. This is the one path that works from every chat app. Add a SwiftUI PasteButton (no paste prompt, `launch.paste`) to the launch scene. It opens PastedReaderView in a full-screen cover: ReaderView over an in-memory TextDocument titled 'Pasted Markdown', with Done (`paste.done`) and Save to Files (`paste.save`, a .fileExporter with a default 'Pasted <yyyy-MM-dd HHmm>.md'). Make TextDocument.init(text:contentType:) available in Release. Replace the DEBUG-only screenshotFileURL with a ReaderContext environment (fileURL, displayName) and keep the screenshot harness working. Empty pastes do nothing; decode pastes over 1 MB off the main actor.",
+      "acceptance": [
+        "TextDocument.init(text:contentType:) is no longer inside `#if DEBUG`, and ReaderView takes its title and file URL from ReaderContext before documentConfiguration",
+        "mdviewApp's launch scene has a PasteButton with identifier `launch.paste` that presents PastedReaderView",
+        "PastedReaderView shows the title 'Pasted Markdown' and has `paste.done` and `paste.save` controls; `paste.save` uses .fileExporter",
+        "App/mdviewUITests/PasteTests.swift sets UIPasteboard.general.string, taps launch.paste and asserts the 'Pasted Markdown' title (or XCTSkip with a stated reason if PasteButton cannot be tapped); `make test` compiles it",
+        "ScreenshotTests still compiles against the ReaderContext-based harness; `make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L10",
+      "title": "Add accessibility audit UI tests",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L2",
+        "L3",
+        "L4",
+        "L5",
+        "L6",
+        "L8",
+        "L9"
+      ],
+      "owned_paths": [
+        "App/mdviewUITests/AccessibilityAuditTests.swift",
+        "App/mdviewUITests/ReaderFixture.swift",
+        "docs/DEVELOPMENT.md"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L10. Add CI-only XCUITest `performAccessibilityAudit()` coverage: rendered kitchenSink in light and dark, Source, find active ('Draft'), accessibility XXXL, the help sheet and the pasted reader. The issue handler may ignore only named system-owned elements, each with a comment; never ignore a whole audit type. Also assert the 'Done' and 'Not done' checkbox elements exist. Document how to read audit failures from the CI xcresult artifact.",
+      "acceptance": [
+        "App/mdviewUITests/AccessibilityAuditTests.swift has one test per screen listed in plan L10, each calling `performAccessibilityAudit`",
+        "Every ignored issue in the handler is matched by element, with a comment explaining why; there is no blanket audit-type exclusion",
+        "A test asserts elements labeled 'Done' and 'Not done' exist in the rendered kitchenSink fixture",
+        "`make test` compiles the UI tests and `make lint` exits 0",
+        "docs/DEVELOPMENT.md explains where audit failures appear (the xcresult artifact)"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L11",
+      "title": "Update launch docs, App Store listing and build number",
+      "type": "task",
+      "priority": 1,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L10"
+      ],
+      "owned_paths": [
+        "docs/app-store/listing.md",
+        "docs/support.md",
+        "docs/privacy.md",
+        "docs/RELEASE.md",
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "project.yml"
+      ],
+      "description": "Launch-critical. See plan.md section 5, bead L11. Set CURRENT_PROJECT_VERSION to 2; MARKETING_VERSION stays 0.1.0. The listing description keeps 'task lists' (now true) and adds Paste Markdown and the how-to-open guide; mark the drag-and-drop lines for removal if L12 fails; recount every character count with Python len(). Add a support FAQ for opening a Markdown file sent in a chat app (plan 3.1 paths 1, 3 and 4). privacy.md: pasted text stays in memory unless saved. Add the new accessibility and open-from-anywhere items to the RELEASE.md checklist. Update README and ARCHITECTURE. Do not run scripts/screenshots.sh.",
+      "acceptance": [
+        "project.yml has CURRENT_PROJECT_VERSION \"2\" and MARKETING_VERSION \"0.1.0\", and no doc still says build 1 for the launch build",
+        "docs/app-store/listing.md mentions Paste Markdown and the guide, and each stated character count matches Python len() of its text",
+        "docs/support.md has a FAQ entry about opening a Markdown file from a chat app",
+        "docs/RELEASE.md lists checks for VoiceOver headings, tables, Differentiate Without Color, the largest text size, Reduce Motion, task lists, Paste Markdown, the guide, chat-app sharing, iPad drag and drop, Stage Manager and the iOS 27 launch buttons",
+        "`make lint` and `make test` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "L12",
+      "title": "Device check and ship 0.1.0 build 2",
+      "type": "task",
+      "priority": 1,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L11"
+      ],
+      "owned_paths": [
+        "docs/app-store/listing.md",
+        "docs/support.md"
+      ],
+      "description": "Launch-critical, human only; the runner stops here. See plan.md section 5, bead L12. keving merges the launch PR after CI is green, runs make archive and make upload, installs from TestFlight on the iOS 27 iPhone and an iPad, and runs the RELEASE.md checklist. He tries plan 3.1 paths 1 to 4 from Grok Bot (and Messages or Mail), notes whether Grok Bot exposes Share or Quick Look, and checks iPad drag and drop, the VoiceOver rotor and the launch buttons on iOS 27. Then he removes failed claims, records the Grok Bot result in support.md, and submits by Fri Nov 6.",
+      "acceptance": [
+        "Build 0.1.0 (2) is uploaded to App Store Connect and installed from TestFlight",
+        "Every docs/RELEASE.md checklist line is checked, or has a filed follow-up bead",
+        "docs/support.md records which open path worked from Grok Bot",
+        "The App Store submission for Nov 10 is sent by Nov 6"
+      ],
+      "checks": [],
+      "no_code": true,
+      "needs_human": true
+    },
+    {
+      "key": "V1",
+      "title": "Move the reader core into App/Shared for reuse by extensions",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "L12"
+      ],
+      "owned_paths": [
+        "App/Shared/",
+        "App/mdview/Reader/",
+        "App/mdview/Motion.swift",
+        "project.yml",
+        "scripts/check_app_config.py",
+        "docs/ARCHITECTURE.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V1. A pure move with no behavior change: RenderedView, ReaderStyle, LocalImageLoader, TaskCheckbox, SourceView, ReaderContext, Motion and a new ReaderCore.swift (ReaderMode) go to App/Shared/. ReaderView stays in App/mdview. The app target compiles App/mdview and App/Shared. Add a check_app_config.py check that App/Shared has no UIApplication.shared (it must be extension-safe, decision K8). The lint rules already cover App/.",
+      "acceptance": [
+        "The listed files live under App/Shared/ and `git diff -M --stat` shows them as renames",
+        "project.yml lists App/Shared in the mdview target sources",
+        "`make lint` runs a check that fails if any App/Shared file contains `UIApplication.shared`",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V2",
+      "title": "Add the View in mdview Action extension",
+      "type": "task",
+      "priority": 2,
+      "size": "L",
+      "model": "opus",
+      "effort": "",
+      "depends_on": [
+        "V1"
+      ],
+      "owned_paths": [
+        "App/mdviewAction/",
+        "Packages/MDCore/Sources/MDCore/SharedContent.swift",
+        "Packages/MDCore/Tests/MDCoreTests/SharedContentTests.swift",
+        "project.yml",
+        "scripts/check_app_config.py",
+        "App/mdview/Help/OpenFilesHelpView.swift",
+        "docs/support.md",
+        "docs/ARCHITECTURE.md",
+        "docs/DEVELOPMENT.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V2. Add target mdviewAction (app-extension, us.par72.mdview.action set in target settings so it overrides Local.xcconfig, APPLICATION_EXTENSION_API_ONLY, embedded in the app, no App Group). It uses com.apple.ui-services with full-screen presentation, display name 'View in mdview', and a SUBQUERY activation rule for exactly one public.plain-text attachment (never TRUEPREDICATE). It ships its own PrivacyInfo.xcprivacy. ActionViewController loads a file representation (keeping its name) or the text, decodes with TextDecoding, applies MDCore SharedContent (title, Markdown or plain, 5 MB cap, Source only above 1 MB) and hosts SharedReaderView (Rendered/Source, Done). It never opens the containing app (decision K7). Add the path to the help view and support.md.",
+      "acceptance": [
+        "`make test` builds the mdviewAction extension unsigned, embedded in the app",
+        "App/mdviewAction/Info.plist has NSExtensionPointIdentifier com.apple.ui-services, NSExtensionActionWantsFullScreenPresentation true and a SUBQUERY activation rule on public.plain-text",
+        "`make lint` checks the extension: bundle ID under us.par72.mdview., a PrivacyInfo.xcprivacy present, no TRUEPREDICATE",
+        "`swift test --package-path Packages/MDCore` passes SharedContentTests (nil name gives 'Shared Text' and Markdown, .txt is plain, the 5 MB limit, Source only above 1 MB)",
+        "No file in App/mdviewAction or App/Shared contains `UIApplication.shared`, `URLSession` or `extensionContext?.open`",
+        "OpenFilesHelpView and docs/support.md describe Share, then View in mdview"
+      ],
+      "checks": [
+        "python3 scripts/check_app_config.py --self-test"
+      ],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V3",
+      "title": "Add an outline sheet that jumps to headings",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V1"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/HeadingOutline.swift",
+        "Packages/MDCore/Tests/MDCoreTests/HeadingOutlineTests.swift",
+        "App/mdview/Reader/OutlineSheet.swift",
+        "App/Shared/Reader/RenderedView.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/OutlineTests.swift"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V3. MDCore HeadingOutline parses RenderPipeline output with Foundation AttributedString(markdown:) (the same default options as Textual), so titles match what renders. It reproduces Textual's slugified() exactly (credit Textual, MIT) and counts duplicate occurrences. OutlineSheet is a level-indented list with 'Heading level N' labels and medium/large detents. The toolbar button `reader.outline` shows only in Rendered with at least 2 headings. A tap dismisses the sheet and calls ScrollViewReader.scrollTo(slug, anchor: .top) via Motion.animate. Duplicate headings jump to the first copy; document that.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes HeadingOutline tests: ATX, setext, `## **Bold** `code`` gives 'Bold code', headings in fences ignored, front matter excluded via the pipeline, duplicate occurrence counts, and an 8-case slug table",
+        "ReaderView shows `reader.outline` only in Rendered mode with ≥ 2 headings",
+        "RenderedView scrolls through ScrollViewReader.scrollTo(slug) inside Motion.animate",
+        "App/mdviewUITests/OutlineTests.swift opens the outline, taps the 'Code' row and asserts the 'Code' heading is hittable; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V4",
+      "title": "Add a copy button to code blocks",
+      "type": "task",
+      "priority": 2,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V3"
+      ],
+      "owned_paths": [
+        "App/Shared/Reader/ReaderStyle.swift",
+        "App/Shared/Reader/CopyableCodeBlockStyle.swift",
+        "App/mdviewUITests/CodeBlockTests.swift"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V4. CopyableCodeBlockStyle reproduces GitHubCodeBlockStyle and puts a copy button in an overlay on the Overflow view. Textual excludes Overflow frames from its selection overlay, so taps reach the button. The button (`code.copy`, label 'Copy code') calls configuration.codeBlock.copyToPasteboard(), shows 'Copied' with a checkmark for 1.5 s via Motion.animate, and gives success haptics. The language hint is a caption. Also add a context-menu 'Copy Code' as the fallback and a VoiceOver-friendly action.",
+      "acceptance": [
+        "ReaderStyle's codeBlockStyle is CopyableCodeBlockStyle, built on Textual `Overflow`",
+        "The copy button has identifier `code.copy`, accessibility label 'Copy code', and calls `configuration.codeBlock.copyToPasteboard()`",
+        "The code block has a `.contextMenu` with 'Copy Code'",
+        "App/mdviewUITests/CodeBlockTests.swift taps code.copy and asserts the pasteboard contains 'struct'; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V5",
+      "title": "Add reading settings for text size, width and font",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V4"
+      ],
+      "owned_paths": [
+        "App/Shared/Reader/ReadingSettings.swift",
+        "App/Shared/Reader/RenderedView.swift",
+        "App/Shared/Reader/SourceView.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/ReadingSettingsTests.swift",
+        "docs/privacy.md",
+        "README.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V5. Add @AppStorage reader.textScale (0.85 to 1.6 in 0.15 steps, default 1.0), reader.width (narrow 560 / standard 680 / wide 860) and reader.fontDesign (system / serif / mono). Rendered applies .textual.fontScale, the font design and the column width; code stays monospaced. Source multiplies its scaled font by textScale. Dynamic Type still applies on top. The reader menu gets a Text submenu (Smaller/Larger/Reset with identifiers reader.text.*), a Width picker and a Font picker. List the keys in privacy.md and the README.",
+      "acceptance": [
+        "ReadingSettings defines the three @AppStorage keys with the ranges and defaults from plan V5",
+        "The reader menu has items with identifiers reader.text.smaller, reader.text.larger and reader.text.reset",
+        "docs/privacy.md and README.md list reader.textScale, reader.width and reader.fontDesign as on-device settings",
+        "App/mdviewUITests/ReadingSettingsTests.swift asserts a heading's frame height grows after two Larger taps; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V6",
+      "title": "Remember reading position per file",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V5"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/ReadingPositionStore.swift",
+        "Packages/MDCore/Tests/MDCoreTests/ReadingPositionStoreTests.swift",
+        "App/Shared/Reader/RenderedView.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "docs/privacy.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V6. MDCore ReadingPositionStore sits behind an injected KeyValueStorage protocol. It stores a scroll fraction per SHA-256 hash of the standardized path, as JSON under reader.positions, LRU-capped at 200, clamped to 0 to 1, and records nothing below 0.02. RenderedView reads the fraction with onScrollGeometryChange (debounced 1 s) and restores once after first layout with ScrollPosition, only for documents with a file URL. privacy.md describes the data (on device, path hash, 200 files).",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes ReadingPositionStore tests: round trip, clamping, the 0.02 floor, pruning at 201 entries, a stable hash, `/a/../b.md` standardized",
+        "RenderedView records and restores position only when ReaderContext/documentConfiguration has a file URL",
+        "docs/privacy.md describes stored reading positions",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V7",
+      "title": "Export to PDF and print",
+      "type": "task",
+      "priority": 2,
+      "size": "L",
+      "model": "opus",
+      "effort": "",
+      "depends_on": [
+        "V6"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/PageSlicer.swift",
+        "Packages/MDCore/Tests/MDCoreTests/PageSlicerTests.swift",
+        "App/mdview/Export/PDFExporter.swift",
+        "App/mdview/Export/ExportMenu.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdviewUITests/ExportTests.swift"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V7. MDCore PageSlicer splits content height into page slices. PDFExporter renders RenderPipeline output with ReaderStyle (light appearance, selection off, page width minus 36 pt margins, local images preloaded, short settle for highlighting) through ImageRenderer into a paged PDF. Letter is used for US/CA/MX regions, A4 elsewhere. The reader menu gets Export PDF (`reader.export.pdf`, ShareLink with a Transferable PDF named after the file) and Print (`reader.print`, UIPrintInteractionController with the PDF data), with a progress view. Documents over 1 MB show 'Too long to export'. No new dependencies, no network.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes PageSlicer tests: an exact multiple, a remainder, tiny content, zero height",
+        "ReaderView's menu has `reader.export.pdf` and `reader.print`",
+        "PDFExporter uses ImageRenderer and a CGContext PDF, with page size chosen by region",
+        "App/mdviewUITests/ExportTests.swift asserts the export item exists and is enabled for kitchenSink; `make test` compiles it",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V8",
+      "title": "Add an optional math rendering toggle (off by default)",
+      "type": "task",
+      "priority": 2,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V7"
+      ],
+      "owned_paths": [
+        "Packages/MDCore/Sources/MDCore/MathDelimiters.swift",
+        "Packages/MDCore/Tests/MDCoreTests/MathDelimitersTests.swift",
+        "Packages/MDCore/Sources/MDCore/RenderPipeline.swift",
+        "App/Shared/Reader/RenderedView.swift",
+        "App/mdview/Reader/ReaderView.swift",
+        "THIRD_PARTY_NOTICES.md",
+        "README.md",
+        "docs/privacy.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V8. Textual's .math extension (swiftui-math already ships) matches $…$ and $$…$$, so dollar amounts would turn into math. Add a 'Math (LaTeX)' menu toggle (`settings.math`, @AppStorage reader.math, default false). When it is on, RenderPipeline runs MathDelimiters (\\( \\) to $ $ and \\[ \\] to $$ $$ outside code fences and spans) and StructuredText gets syntaxExtensions [.math]. Update THIRD_PARTY_NOTICES, README and privacy.md.",
+      "acceptance": [
+        "`swift test --package-path Packages/MDCore` passes MathDelimiters tests: inline, block, fences and code spans untouched, escaped backslash untouched, and RenderPipeline with math false returns the same output as before",
+        "The reader menu has a `settings.math` toggle defaulting to off",
+        "RenderedView passes `[.math]` only when the toggle is on",
+        "THIRD_PARTY_NOTICES.md no longer says math syntax is never turned on",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V9",
+      "title": "Add iPad keyboard shortcuts",
+      "type": "task",
+      "priority": 2,
+      "size": "S",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V8"
+      ],
+      "owned_paths": [
+        "App/mdview/Reader/ReaderView.swift",
+        "App/mdview/mdviewApp.swift",
+        "docs/support.md"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V9. Add a View command menu using focused values from ReaderView: ⌘1 Rendered, ⌘2 Source (only when the picker shows), ⇧⌘O Outline, ⌘+/⌘−/⌘0 text size, ⌘P Print, ⇧⌘E Export PDF. Do not duplicate the system ⌘F of .searchable. The shortcuts must show in the iPad ⌘ overlay. List them in support.md.",
+      "acceptance": [
+        "mdviewApp declares `.commands` with a View menu containing the shortcuts listed in plan V9",
+        "The commands are disabled when no reader is focused (focused values)",
+        "docs/support.md lists the shortcuts",
+        "`make test` and `make lint` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V10",
+      "title": "Update v0.2 docs, set version 0.2.0 and extend screenshots",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V2",
+        "V3",
+        "V4",
+        "V5",
+        "V6",
+        "V7",
+        "V8",
+        "V9"
+      ],
+      "owned_paths": [
+        "project.yml",
+        "docs/app-store/listing.md",
+        "docs/support.md",
+        "docs/privacy.md",
+        "docs/RELEASE.md",
+        "README.md",
+        "docs/ARCHITECTURE.md",
+        "scripts/screenshots.sh",
+        "App/mdviewUITests/ScreenshotTests.swift",
+        "scripts/screenshot-samples/"
+      ],
+      "description": "v0.2. See plan.md section 5, bead V10. Set MARKETING_VERSION 0.2.0 and CURRENT_PROJECT_VERSION 3 for the app and the extension. Update the listing (features, What's New, recounted character counts, no-network claims kept), support, privacy (every new UserDefaults key, the extension's privacy manifest, still Data Not Collected), README and ARCHITECTURE. Add the 06-outline and 07-tasks screenshots to ScreenshotTests, screenshots.sh (collect and verify lists) and the listing upload order, with a new 'Launch Checklist.md' sample. Add v0.2 items to the RELEASE.md checklist. Do not run the screenshot script.",
+      "acceptance": [
+        "project.yml sets 0.2.0 / 3 for both the mdview and mdviewAction targets",
+        "scripts/screenshots.sh and ScreenshotTests expect 06-outline.png and 07-tasks.png, and scripts/screenshot-samples/Launch Checklist.md exists",
+        "docs/app-store/listing.md character counts match Python len() and the privacy section still says Data Not Collected",
+        "docs/RELEASE.md has v0.2 checks for the Action extension, outline, copy, settings, position, PDF/print, math and shortcuts",
+        "`make lint` and `make test` exit 0"
+      ],
+      "checks": [],
+      "no_code": false,
+      "needs_human": false
+    },
+    {
+      "key": "V11",
+      "title": "Device check and ship 0.2.0",
+      "type": "task",
+      "priority": 2,
+      "size": "M",
+      "model": "sonnet",
+      "effort": "",
+      "depends_on": [
+        "V10"
+      ],
+      "owned_paths": [
+        "docs/app-store/screenshots/"
+      ],
+      "description": "v0.2, human only. See plan.md section 5, bead V11. keving merges after CI is green, runs scripts/screenshots.sh (one simulator at a time) and commits the screenshots, then runs make archive and make upload (automatic signing registers us.par72.mdview.action). He runs the v0.2 RELEASE.md checklist on the iPhone and iPad, including View in mdview from Grok Bot, Messages, Mail and Safari, and submits 0.2.0. He also decides Q4 (Quick Look) based on whether iOS 27.x fixed FB24481377.",
+      "acceptance": [
+        "0.2.0 (3) with the embedded extension is uploaded and installed from TestFlight",
+        "The v0.2 RELEASE.md checklist is complete, or has filed follow-up beads",
+        "New screenshots are committed under docs/app-store/screenshots/",
+        "0.2.0 is submitted for review"
+      ],
+      "checks": [],
+      "no_code": true,
+      "needs_human": true
+    }
+  ]
+}
