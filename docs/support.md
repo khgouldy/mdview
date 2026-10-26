@@ -1,0 +1,61 @@
+---
+title: mdview Support
+permalink: /support/
+---
+
+# mdview Support
+
+mdview is a private Markdown viewer for iPhone and iPad (iOS 18 and later). Open a `.md`, `.markdown`, `.mdown`, or plain text file and read it, rendered or as source. Everything happens on your device: no network access, no account, no analytics.
+
+## Contact
+
+- Email: [support@par72.us](mailto:support@par72.us)
+- Bug reports and feature requests: [GitHub issues](https://github.com/khgouldy/mdview/issues)
+
+## FAQ
+
+### How do I open a file?
+
+Launch mdview and pick a file in the document browser, which shows the same locations as the Files app (On My iPhone or iPad, iCloud Drive, and any file providers you have enabled). You can also:
+
+- In the Files app, tap a Markdown file, or long-press it and choose Share, then mdview.
+- From another app, use Share or Open In and choose mdview.
+- On iPad, drag a Markdown file onto mdview.
+- Reopen a file from Recents in the document browser.
+
+mdview reads the file where it is. It does not make a copy.
+
+### What does the Obsidian extras toggle do?
+
+Open the menu (the ellipsis button in the top right of a document) and switch Obsidian extras on or off. It is on by default. When it is on, mdview hides a YAML front matter block at the top of the file and shows wikilinks such as `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. When it is off, those are shown exactly as written. The setting does not change your file.
+
+### What is Source view?
+
+Use the Rendered / Source control at the bottom of the screen. Source shows the file exactly as stored, in a monospaced font you can select and copy. mdview remembers your choice for the next document. Plain text files always open in Source.
+
+### How do I search in a document?
+
+Pull down on a document to reveal the Find field and type. mdview switches to the source text, highlights the matches, and shows a count such as "2 of 7". Press Search or Return to go to the next match. Clear the field to return to your previous view.
+
+### Why don't web images show?
+
+mdview never uses the network, so images from `http` or `https` addresses are shown as a link instead. Tap the link to open the image in Safari. Images stored next to your document (relative paths) are shown inline.
+
+### Does mdview edit files?
+
+No. mdview is a viewer. It never changes your files.
+
+### Does it follow Dark Mode and text size?
+
+Yes. Rendered and Source views follow the system appearance and Dynamic Type.
+
+## Reporting a bug
+
+Email [support@par72.us](mailto:support@par72.us) or open an issue at [github.com/khgouldy/mdview/issues](https://github.com/khgouldy/mdview/issues). Please include:
+
+- your device model and iOS version
+- the mdview version (listed on its App Store page under Version History)
+- what you did, what you expected, and what happened
+- if you can share it, a small Markdown file that shows the problem
+
+mdview is open source under the MIT license: [github.com/khgouldy/mdview](https://github.com/khgouldy/mdview).

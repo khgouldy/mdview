@@ -1,0 +1,9 @@
+title: mdview
+description: A private Markdown viewer for iPhone and iPad.
+theme: jekyll-theme-minimal
+exclude:
+  - plans
+  - ARCHITECTURE.md
+  - DEVELOPMENT.md
+  - RELEASE.md
+  - app-store/screenshots
