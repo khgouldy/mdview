@@ -14,7 +14,7 @@
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
-			<string>Owner</string>
+			<string>Default</string>
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>net.daringfireball.markdown</string>
@@ -30,6 +30,18 @@
 			<key>LSItemContentTypes</key>
 			<array>
 				<string>public.plain-text</string>
+			</array>
+		</dict>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Text</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.text</string>
 			</array>
 		</dict>
 	</array>
@@ -60,6 +72,8 @@
 		<key>UIApplicationSupportsMultipleScenes</key>
 		<true/>
 	</dict>
+	<key>UIFileSharingEnabled</key>
+	<true/>
 	<key>UILaunchScreen</key>
 	<dict/>
 	<key>UISupportedInterfaceOrientations</key>
@@ -95,9 +109,17 @@
 					<string>md</string>
 					<string>markdown</string>
 					<string>mdown</string>
+					<string>mkd</string>
+					<string>mkdn</string>
+					<string>mdwn</string>
+					<string>mdtxt</string>
+					<string>mdtext</string>
 				</array>
 				<key>public.mime-type</key>
-				<string>text/markdown</string>
+				<array>
+					<string>text/markdown</string>
+					<string>text/x-markdown</string>
+				</array>
 			</dict>
 		</dict>
 	</array>

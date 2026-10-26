@@ -186,14 +186,7 @@ struct ReaderView: View {
     }
 
     private var showsModePicker: Bool {
-        switch fileExtension {
-        case "txt", "text":
-            false
-        case "md", "markdown", "mdown":
-            true
-        default:
-            document.allowsRenderedMode
-        }
+        MarkdownFileTypes.isMarkdown(pathExtension: fileExtension) ?? document.allowsRenderedMode
     }
 
     private var fileExtension: String {

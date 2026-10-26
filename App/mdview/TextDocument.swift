@@ -7,7 +7,7 @@ struct TextDocument: FileDocument, Sendable {
     var contentType: UTType
 
     static var readableContentTypes: [UTType] {
-        [.markdown, .plainText]
+        [.markdown, .plainText, .text]
     }
 
     static var writableContentTypes: [UTType] {
@@ -28,7 +28,8 @@ struct TextDocument: FileDocument, Sendable {
         }
     #endif
 
-    /// The Markdown UTI also conforms to `public.plain-text`, so plain text is every other type.
+    /// The Markdown UTI also conforms to `public.plain-text`, so plain text, RTF and HTML are every other type and show
+    /// in Source.
     var allowsRenderedMode: Bool {
         contentType.identifier == UTType.markdown.identifier || contentType.conforms(to: .markdown)
     }

@@ -5,6 +5,7 @@ Prints `ok: <check>` per passing check, `error: ...` lines and exit 1 otherwise.
 `--self-test` runs every check against a bad in-memory example and asserts it fails.
 """
 
+import copy
 import plistlib
 import re
 import subprocess
@@ -92,12 +93,54 @@ def check_display_name(project_yml, info_plist, listing):
     return errors
 
 
+SWIFT_TYPES_PATH = "Packages/MDCore/Sources/MDCore/MarkdownFileTypes.swift"
+EXT_BLOCK_RE = re.compile(r"// BEGIN markdownExtensions\n(.*?)// END markdownExtensions", re.S)
+EXPECTED_MIME = ["text/markdown", "text/x-markdown"]
+EXPECTED_DOC_TYPES = {"net.daringfireball.markdown": "Default", "public.plain-text": "Alternate", "public.text": "Alternate"}
+
+
+def check_markdown_types(plist_bytes, swift_text):
+    """(f) Info.plist declares exactly the Swift extension list, both MIME types, three document
+    types with the expected ranks, and the two Boolean keys; the UTI is imported, never exported."""
+    errors = []
+    block = EXT_BLOCK_RE.search(swift_text)
+    if not block:
+        return [f"{SWIFT_TYPES_PATH}: BEGIN/END markdownExtensions markers not found"]
+    swift_exts = re.findall(r'"([^"]+)"', block.group(1))
+    try:
+        plist = plistlib.loads(plist_bytes)
+    except Exception as exc:
+        return [f"App/mdview/Info.plist: unreadable plist ({exc})"]
+    if plist.get("UTExportedTypeDeclarations"):
+        errors.append("App/mdview/Info.plist: must not export net.daringfireball.markdown")
+    imported = [t for t in plist.get("UTImportedTypeDeclarations", []) if t.get("UTTypeIdentifier") == "net.daringfireball.markdown"]
+    if not imported:
+        errors.append("App/mdview/Info.plist: net.daringfireball.markdown is not imported")
+    else:
+        tags = imported[0].get("UTTypeTagSpecification", {})
+        if sorted(tags.get("public.filename-extension", [])) != sorted(swift_exts):
+            errors.append(f"App/mdview/Info.plist: extensions {tags.get('public.filename-extension')} differ from MarkdownFileTypes.swift {swift_exts}")
+        if tags.get("public.mime-type") != EXPECTED_MIME:
+            errors.append(f"App/mdview/Info.plist: public.mime-type must be {EXPECTED_MIME}")
+    ranks = {}
+    for doc in plist.get("CFBundleDocumentTypes", []):
+        for uti in doc.get("LSItemContentTypes", []):
+            ranks[uti] = doc.get("LSHandlerRank")
+    if ranks != EXPECTED_DOC_TYPES:
+        errors.append(f"App/mdview/Info.plist: document type ranks {ranks} must be {EXPECTED_DOC_TYPES}")
+    for key in ("UIFileSharingEnabled", "LSSupportsOpeningDocumentsInPlace"):
+        if plist.get(key) is not True:
+            errors.append(f"App/mdview/Info.plist: {key} must be true")
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
     ("privacy manifests: no tracking, no collected data", "privacy"),
     ("no TRUEPREDICATE in Info.plist", "predicate"),
     ("display name: Info.plist, project.yml and listing.md agree", "display"),
+    ("markdown types: Info.plist matches MarkdownFileTypes.swift", "types"),
 ]
 
 
@@ -134,6 +177,9 @@ def run():
             team_files.get("project.yml", ""),
             team_files.get("App/mdview/Info.plist", ""),
             team_files.get("docs/app-store/listing.md", ""),
+        ),
+        "types": check_markdown_types(
+            (ROOT / "App/mdview/Info.plist").read_bytes(), read_text(SWIFT_TYPES_PATH) or ""
         ),
     }
     failed = False
@@ -181,6 +227,36 @@ def self_test():
     plist_bad = "<key>CFBundleDisplayName</key>\n\t<string>mdview</string>"
     yml = "settings:\n  base:\n    APP_DISPLAY_NAME: MdV\n"
     listing = "## App name\n\n**MdV: Markdown Viewer** (20/30)\n"
+    swift_ok = '// BEGIN markdownExtensions\nlet x = ["md", "mdx"]\n// END markdownExtensions\n'
+    plist_good = {
+        "UIFileSharingEnabled": True,
+        "LSSupportsOpeningDocumentsInPlace": True,
+        "CFBundleDocumentTypes": [
+            {"LSItemContentTypes": [u], "LSHandlerRank": r} for u, r in EXPECTED_DOC_TYPES.items()
+        ],
+        "UTImportedTypeDeclarations": [
+            {
+                "UTTypeIdentifier": "net.daringfireball.markdown",
+                "UTTypeTagSpecification": {"public.filename-extension": ["md", "mdx"], "public.mime-type": EXPECTED_MIME},
+            }
+        ],
+    }
+    for name, mutate in [
+        ("types extension", lambda p: p["UTImportedTypeDeclarations"][0]["UTTypeTagSpecification"].update({"public.filename-extension": ["md"]})),
+        ("types mime", lambda p: p["UTImportedTypeDeclarations"][0]["UTTypeTagSpecification"].update({"public.mime-type": ["text/markdown"]})),
+        ("types rank", lambda p: p["CFBundleDocumentTypes"][0].update({"LSHandlerRank": "Owner"})),
+        ("types missing doc type", lambda p: p["CFBundleDocumentTypes"].pop()),
+        ("types file sharing", lambda p: p.update({"UIFileSharingEnabled": False})),
+        ("types in place", lambda p: p.pop("LSSupportsOpeningDocumentsInPlace")),
+        ("types exported", lambda p: p.update({"UTExportedTypeDeclarations": [{}]})),
+    ]:
+        bad = copy.deepcopy(plist_good)
+        mutate(bad)
+        assert check_markdown_types(plistlib.dumps(bad), swift_ok), f"self-test: {name} did not fail on its bad example"
+        print(f"ok: self-test {name}")
+    assert not check_markdown_types(plistlib.dumps(plist_good), swift_ok), "self-test: types failed on its good example"
+    assert check_markdown_types(plistlib.dumps(plist_good), "no markers"), "self-test: types markers did not fail"
+    print("ok: self-test types good")
     for name, bad, good in [
         ("display plist", (yml, plist_bad, listing), (yml, plist_ok, listing)),
         ("display undefined", ("settings:\n", plist_ok, listing), (yml, plist_ok, listing)),
