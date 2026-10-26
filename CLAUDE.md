@@ -66,15 +66,19 @@ Commands and toolchain versions are in `docs/DEVELOPMENT.md`. From the repo root
 make tools
 make gen
 make lint
+make check-config
 make format
 make test
+make build-tests
 make build-ios
 make test-ios
 make open
 make clean
 ```
 
-`make test` runs `swift test --package-path Packages/MDCore`, then `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`. It does not boot a simulator and does not need `DEVELOPMENT_TEAM`.
+`make test` runs `swift test --package-path Packages/MDCore`, then `make build-tests` (`xcodebuild build-for-testing -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`, which compiles the app and mdviewUITests). It does not boot a simulator and does not need `DEVELOPMENT_TEAM`.
+
+`make lint` ends with `make check-config` (`scripts/check_app_config.py`, `--self-test` available).
 
 `make test-ios` runs the XCUITest launch test on a simulator. It exits non-zero unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. Do not set the override on a developer Mac. Override the destination with `MDVIEW_IOS_DESTINATION` (default `platform=iOS Simulator,name=iPhone 16`).
 

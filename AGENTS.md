@@ -133,14 +133,18 @@ Toolchain versions and per-target notes are in `docs/DEVELOPMENT.md`.
 ```bash
 make tools      # xcodegen, swiftformat, swiftlint
 make gen        # Config/Local.xcconfig if missing, then mdview.xcodeproj
-make lint
+make lint       # swiftformat, swiftlint, then check-config
+make check-config  # scripts/check_app_config.py (--self-test runs its bad examples)
 make format
-make test       # swift test Packages/MDCore + unsigned generic iOS build
+make test       # swift test Packages/MDCore, then build-tests
+make build-tests   # xcodebuild build-for-testing, unsigned, no simulator
 make build-ios
 make test-ios   # simulator XCUITest; refuses unless CI=true or MDVIEW_ALLOW_SIMULATOR=1
 make open
 make clean
 ```
+
+`make lint` ends with `make check-config` (`scripts/check_app_config.py`, `--self-test` available).
 
 `make test` uses `-destination 'generic/platform=iOS'` and `CODE_SIGNING_ALLOWED=NO`. No development team. Do not boot the iOS Simulator on a developer Mac.
 

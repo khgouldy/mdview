@@ -19,19 +19,20 @@ final class ScreenshotTests: XCTestCase {
             attachment.lifetime = .keepAlways
             add(attachment)
         }
-        let light = try session.makeApp(document: "Cedar Trail.md", scheme: "light")
+        let cedar = try ReaderFixture.cedarTrail()
+        let light = ReaderLauncher.app(fixture: cedar, scheme: "light")
         light.launch()
         try session.captureRendered(light, name: "01-rendered-light.png")
-        let dark = try session.makeApp(document: "Cedar Trail.md", scheme: "dark")
+        let dark = ReaderLauncher.app(fixture: cedar, scheme: "dark")
         dark.launch()
         try session.captureRendered(dark, name: "02-rendered-dark.png")
-        let source = try session.makeApp(document: "Cedar Trail.md", scheme: "light")
+        let source = ReaderLauncher.app(fixture: cedar, scheme: "light")
         source.launch()
         try session.captureSource(source)
-        let find = try session.makeApp(document: "Cedar Trail.md", scheme: "light", query: "Cedar")
+        let find = ReaderLauncher.app(fixture: cedar, scheme: "light", query: "Cedar")
         find.launch()
         try session.captureFind(find)
-        let review = try session.makeApp(document: "Weekly Review.md", scheme: "light")
+        let review = try ReaderLauncher.app(fixture: ReaderFixture.weeklyReview(), scheme: "light")
         review.launch()
         try session.captureObsidian(review)
     }
@@ -55,37 +56,8 @@ private struct ScreenshotRun: Decodable {
     private static let fileURL = URL(fileURLWithPath: "/tmp/mdview-screenshot-run.json")
 }
 
-private enum ScreenshotTestError: Error, CustomStringConvertible {
-    case missingSample(String)
-
-    var description: String {
-        switch self {
-        case let .missingSample(name):
-            "Missing screenshot sample \(name). scripts/screenshots.sh injects it into the test environment."
-        }
-    }
-}
-
 private struct ScreenshotSession {
     var attach: (String) -> Void
-
-    func makeApp(document: String, scheme: String, query: String? = nil) throws -> XCUIApplication {
-        let text = try sampleText(document)
-        let app = XCUIApplication()
-        app.launchArguments = [
-            "--screenshot-document", document,
-            "-AppleLanguages", "(en)",
-            "-AppleLocale", "en_US",
-            "-ApplePersistenceIgnoreState", "YES",
-        ]
-        app.launchEnvironment["MDVIEW_SCREENSHOT_NAME"] = document
-        app.launchEnvironment["MDVIEW_SCREENSHOT_MARKDOWN"] = text
-        app.launchEnvironment["MDVIEW_SCREENSHOT_SCHEME"] = scheme
-        if let query {
-            app.launchEnvironment["MDVIEW_SCREENSHOT_QUERY"] = query
-        }
-        return app
-    }
 
     func captureRendered(_ app: XCUIApplication, name: String) throws {
         XCUIDevice.shared.orientation = .portrait
@@ -123,22 +95,6 @@ private struct ScreenshotSession {
         try selectMode("Rendered", in: app)
         dismissSystemBanner(app)
         capture("05-obsidian.png")
-    }
-
-    private func sampleText(_ name: String) throws -> String {
-        let key: String
-        switch name {
-        case "Cedar Trail.md":
-            key = "MDVIEW_SAMPLE_CEDAR"
-        case "Weekly Review.md":
-            key = "MDVIEW_SAMPLE_REVIEW"
-        default:
-            throw ScreenshotTestError.missingSample(name)
-        }
-        guard let text = ProcessInfo.processInfo.environment[key], !text.isEmpty else {
-            throw ScreenshotTestError.missingSample(name)
-        }
-        return text
     }
 
     private func requireReader(_ app: XCUIApplication, title: String) throws {

@@ -1,4 +1,4 @@
-.PHONY: help tools gen lint format test build-ios test-ios archive upload open clean
+.PHONY: help tools gen lint check-config format test build-tests build-ios test-ios archive upload open clean
 
 SCHEME = mdview
 PROJECT = mdview.xcodeproj
@@ -16,9 +16,11 @@ help:
 	@echo "mdview targets:"
 	@echo "  tools      Install xcodegen, swiftformat, and swiftlint if they are missing"
 	@echo "  gen        Copy Config/Local.xcconfig if needed and generate the Xcode project"
-	@echo "  lint       swiftformat --lint and swiftlint (strict)"
+	@echo "  lint       swiftformat --lint, swiftlint (strict), then check-config"
+	@echo "  check-config  scripts/check_app_config.py (team ID, bundle IDs, privacy manifests, TRUEPREDICATE)"
 	@echo "  format     Apply swiftformat and swiftlint --fix"
-	@echo "  test       swift test Packages/MDCore, then an unsigned generic iOS build"
+	@echo "  test       swift test Packages/MDCore, then build-tests"
+	@echo "  build-tests  xcodebuild build-for-testing (app and UI tests) for generic iOS, no simulator"
 	@echo "  build-ios  xcodebuild for generic/platform=iOS with signing disabled"
 	@echo "  test-ios   Simulator XCUITest. Refuses unless CI=true or MDVIEW_ALLOW_SIMULATOR=1"
 	@echo "  archive    Signed Release archive into BUILD_DIR (App Store Connect API key from ASC_ENV)"
@@ -44,6 +46,10 @@ gen: tools
 lint: tools
 	swiftformat --lint .
 	swiftlint lint --strict
+	@$(MAKE) --no-print-directory check-config
+
+check-config:
+	python3 scripts/check_app_config.py
 
 format: tools
 	swiftformat .
@@ -51,7 +57,17 @@ format: tools
 
 test: tools gen
 	swift test --package-path Packages/MDCore
-	$(MAKE) build-ios
+	$(MAKE) build-tests
+
+build-tests: tools gen
+	xcodebuild build-for-testing \
+		-project $(PROJECT) \
+		-scheme $(SCHEME) \
+		-destination '$(IOS_DESTINATION)' \
+		-derivedDataPath $(DERIVED_DATA) \
+		-skipPackagePluginValidation \
+		-skipMacroValidation \
+		CODE_SIGNING_ALLOWED=NO
 
 build-ios: tools gen
 	xcodebuild build \

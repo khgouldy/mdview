@@ -24,9 +24,11 @@ The app deployment target is iOS 18.0. `SWIFT_VERSION` is 6.0, with `SWIFT_STRIC
 | --- | --- |
 | `make tools` | Checks for xcodegen, swiftformat, and swiftlint. Installs any that are missing. |
 | `make gen` | Copies `Config/Local.xcconfig.example` to `Config/Local.xcconfig` if the copy is missing, then runs `xcodegen generate`. |
-| `make lint` | `swiftformat --lint` and `swiftlint lint --strict`. Exits non-zero when a file under `App/` or `Packages/` contains `URLSession`, `NWConnection`, `WKWebView`, or `CFNetwork`. |
+| `make lint` | `swiftformat --lint`, `swiftlint lint --strict`, then `make check-config`. Exits non-zero when a file under `App/` or `Packages/` contains `URLSession`, `NWConnection`, `WKWebView`, or `CFNetwork`. |
+| `make check-config` | `python3 scripts/check_app_config.py`. Prints `ok:` per check or `error:` lines and exits 1: no tracked file sets a non-empty `DEVELOPMENT_TEAM`, every `PRODUCT_BUNDLE_IDENTIFIER` is `us.par72.mdview` or a child, every `PrivacyInfo.xcprivacy` under `App/` has no tracking and no collected data, no `Info.plist` under `App/` has `TRUEPREDICATE`. `--self-test` runs each check against a bad example. |
 | `make format` | Rewrites Swift with swiftformat, then `swiftlint lint --fix`. |
-| `make test` | `swift test --package-path Packages/MDCore`, then the `build-ios` target. |
+| `make test` | `swift test --package-path Packages/MDCore`, then `make build-tests`. |
+| `make build-tests` | `xcodebuild build-for-testing -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`. Compiles the app and `mdviewUITests` without a simulator or development team. |
 | `make build-ios` | `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`. No simulator and no development team. |
 | `make test-ios` | Runs `mdviewUITests` on the simulator with parallel testing off. Exits with an error unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. |
 | `make open` | Generates the project and opens it in Xcode. |
@@ -63,7 +65,7 @@ The app icon is a single 1024 image, `App/mdview/Assets.xcassets/AppIcon.appicon
 
 MDCore tests run on the Mac with `swift test`. They cover text decoding (UTF-8, UTF-16 with a BOM, Windows-1252 including the euro byte `0x80`), remote-image rewriting, the file-URL image policy, the Obsidian preprocessor, and find ranges.
 
-`App/mdviewUITests/LaunchTests.swift` launches the app and checks that it reaches the foreground. That test runs only through `make test-ios`, which CI calls. `make test` does not run it.
+`App/mdviewUITests/LaunchTests.swift` launches the app and checks that it reaches the foreground. That test runs only through `make test-ios`, which CI calls. `make test` compiles it through `make build-tests` but does not run it. UI tests open fixtures through `ReaderLauncher` (`ReaderFixture.kitchenSink` is the all-blocks document).
 
 ## CI
 
