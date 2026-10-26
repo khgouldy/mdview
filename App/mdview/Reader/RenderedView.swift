@@ -5,12 +5,12 @@ import Textual
 /// GitHub-styled Markdown. Textual parses, lays out, and highlights code. Remote images are links.
 struct RenderedView: View {
     let markdown: String
+    var baseDirectory: URL?
 
     /// Wide enough for a reading column on iPad. Phones are narrower, so the cap does not bind.
     private static let readableWidth: CGFloat = 680
 
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
-    @Environment(\.documentConfiguration) private var documentConfiguration
 
     var body: some View {
         ScrollView {
@@ -30,9 +30,5 @@ struct RenderedView: View {
     private var markdownForDisplay: String {
         let source = obsidianEnabled ? ObsidianPreprocessor.process(markdown) : markdown
         return RemoteImages.linkify(source)
-    }
-
-    private var baseDirectory: URL? {
-        documentConfiguration?.fileURL?.deletingLastPathComponent()
     }
 }

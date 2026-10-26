@@ -28,6 +28,9 @@ struct ReaderView: View {
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @Environment(\.documentConfiguration) private var documentConfiguration
+    #if DEBUG
+        @Environment(\.screenshotFileURL) private var screenshotFileURL
+    #endif
 
     @State private var searchQuery = ""
     @State private var currentMatch = 0
@@ -60,7 +63,21 @@ struct ReaderView: View {
                 }
             }
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
+        #if DEBUG
+            .onAppear(perform: applyScreenshotQuery)
+        #endif
     }
+
+    #if DEBUG
+        /// Screenshot runs fill Find without focusing the field, so the keyboard stays hidden.
+        private func applyScreenshotQuery() {
+            let query = ProcessInfo.processInfo.environment["MDVIEW_SCREENSHOT_QUERY"] ?? ""
+            guard !query.isEmpty else {
+                return
+            }
+            searchQuery = query
+        }
+    #endif
 
     /// The searchable prompt is only a placeholder, so it disappears once the query is typed.
     /// This line sits in the bar directly under the search field for the whole query.
@@ -95,8 +112,11 @@ struct ReaderView: View {
                 currentMatch: activeMatchIndex,
             )
         } else {
-            RenderedView(markdown: document.text)
-                .accessibilityIdentifier("reader.rendered")
+            RenderedView(
+                markdown: document.text,
+                baseDirectory: resolvedFileURL?.deletingLastPathComponent(),
+            )
+            .accessibilityIdentifier("reader.rendered")
         }
     }
 
@@ -177,11 +197,21 @@ struct ReaderView: View {
     }
 
     private var fileExtension: String {
-        documentConfiguration?.fileURL?.pathExtension.lowercased() ?? ""
+        resolvedFileURL?.pathExtension.lowercased() ?? ""
     }
 
     private var fileName: String {
-        let name = documentConfiguration?.fileURL?.lastPathComponent ?? ""
+        let name = resolvedFileURL?.lastPathComponent ?? ""
         return name.isEmpty ? "Document" : name
+    }
+
+    /// DocumentGroup sets the file URL. Screenshot runs pass the same URL in Debug builds.
+    private var resolvedFileURL: URL? {
+        #if DEBUG
+            if let screenshotFileURL {
+                return screenshotFileURL
+            }
+        #endif
+        return documentConfiguration?.fileURL
     }
 }
