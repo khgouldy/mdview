@@ -1,0 +1,25 @@
+included:
+  - App
+  - Packages
+
+excluded:
+  - .build
+  - .derivedData
+  - mdview.xcodeproj
+  - Packages/MDCore/.build
+  - Packages/MDCore/.swiftpm
+
+strict: true
+
+disabled_rules:
+  - trailing_comma
+
+type_name:
+  validates_start_with_lowercase: off
+
+custom_rules:
+  no_networking:
+    name: "No networking"
+    regex: '(URLSession|NWConnection|WKWebView|CFNetwork)'
+    message: "App and MDCore stay on-device. URLSession, NWConnection, WKWebView, and CFNetwork are not allowed."
+    severity: error

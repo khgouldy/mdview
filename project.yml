@@ -1,0 +1,92 @@
+name: mdview
+options:
+  createIntermediateGroups: true
+  groupSortPosition: top
+  developmentLanguage: en
+  deploymentTarget:
+    iOS: "18.0"
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    SWIFT_STRICT_CONCURRENCY: complete
+    IPHONEOS_DEPLOYMENT_TARGET: "18.0"
+    TARGETED_DEVICE_FAMILY: "1,2"
+    SUPPORTS_MACCATALYST: NO
+    CODE_SIGN_STYLE: Automatic
+    CODE_SIGNING_REQUIRED: NO
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+  configs:
+    Debug:
+      SWIFT_ACTIVE_COMPILATION_CONDITIONS: DEBUG
+    Release:
+      SWIFT_COMPILATION_MODE: wholemodule
+packages:
+  Textual:
+    url: https://github.com/gonzalezreal/textual
+    minorVersion: "0.5.0"
+  MDCore:
+    path: Packages/MDCore
+targets:
+  mdview:
+    type: application
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: App/mdview
+        excludes:
+          - Info.plist
+    dependencies:
+      - package: Textual
+        product: Textual
+      - package: MDCore
+        product: MDCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: us.par72.mdview
+        PRODUCT_NAME: mdview
+        GENERATE_INFOPLIST_FILE: NO
+        INFOPLIST_FILE: App/mdview/Info.plist
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        CODE_SIGN_STYLE: Automatic
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+    configFiles:
+      Debug: Config/Local.xcconfig
+      Release: Config/Local.xcconfig
+  mdviewUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: App/mdviewUITests
+    dependencies:
+      - target: mdview
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: us.par72.mdview.uitests
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_TARGET_NAME: mdview
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+schemes:
+  mdview:
+    build:
+      targets:
+        mdview: all
+        mdviewUITests: test
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - mdviewUITests
+    archive:
+      config: Release
+fileGroups:
+  - Config
+  - Packages

@@ -1,8 +1,24 @@
 .DS_Store
 xcuserdata/
 DerivedData/
+.derivedData/
 *.xcuserstate
 build/
+.build/
+.swiftpm/
+
+# Generated project. Package.resolved stays tracked so the Textual pin is reproducible.
+mdview.xcodeproj/*
+!mdview.xcodeproj/project.xcworkspace/
+mdview.xcodeproj/project.xcworkspace/*
+!mdview.xcodeproj/project.xcworkspace/xcshareddata/
+mdview.xcodeproj/project.xcworkspace/xcshareddata/*
+!mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/
+mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/*
+!mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
+
+# Signing overrides. Copy from Config/Local.xcconfig.example.
+Config/Local.xcconfig
 
 # Beads / Dolt files (added by bd init)
 .dolt/

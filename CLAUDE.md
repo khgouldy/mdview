@@ -60,18 +60,36 @@ This protocol applies when ending a Beads implementation workflow. It is subordi
 
 ## Build & Test
 
-_Add your build and test commands here_
+Commands and toolchain versions are in `docs/DEVELOPMENT.md`. From the repo root:
 
 ```bash
-# Example:
-# npm install
-# npm test
+make tools
+make gen
+make lint
+make format
+make test
+make build-ios
+make test-ios
+make open
+make clean
 ```
+
+`make test` runs `swift test --package-path Packages/MDCore`, then `xcodebuild build -destination 'generic/platform=iOS' CODE_SIGNING_ALLOWED=NO`. It does not boot a simulator and does not need `DEVELOPMENT_TEAM`.
+
+`make test-ios` runs the XCUITest launch test on a simulator. It exits non-zero unless `CI=true` or `MDVIEW_ALLOW_SIMULATOR=1`. Do not set the override on a developer Mac. Override the destination with `MDVIEW_IOS_DESTINATION` (default `platform=iOS Simulator,name=iPhone 16`).
 
 ## Architecture Overview
 
-_Add a brief overview of your project architecture_
+mdview is a SwiftUI iOS app. The scene is `DocumentGroup(viewing: TextDocument.self)`. `TextDocument` is a read-only `FileDocument` for the imported Markdown UTI `net.daringfireball.markdown` (extensions `md`, `markdown`, `mdown`) and `public.plain-text`. It decodes bytes with `MDCore.TextDecoding`. The viewer shows the raw string. Later beads replace that with Textual.
+
+`Packages/MDCore` is a Foundation-only package (iOS 18, macOS 15, no dependencies) for logic that `swift test` can run on the Mac. The app target's only remote package is Textual, pinned `.upToNextMinor(from: "0.5.0")`.
+
+The system document browser provides Files, Recents, share sheet, Open In, and iPad drag-and-drop. There is no custom browser.
 
 ## Conventions & Patterns
 
-_Add your project-specific conventions here_
+- iOS deployment target 18.0. `SWIFT_VERSION` is 6 with strict concurrency.
+- Edit `project.yml`, then `make gen`. `mdview.xcodeproj` is generated and gitignored, except `Package.resolved`.
+- `Config/Local.xcconfig` is gitignored. `make gen` copies it from `Config/Local.xcconfig.example` when it is missing. `PRODUCT_BUNDLE_IDENTIFIER` is `us.par72.mdview`. Leave `DEVELOPMENT_TEAM` empty.
+- `make lint` runs swiftformat and swiftlint. The custom rule `no_networking` rejects `URLSession`, `NWConnection`, `WKWebView`, and `CFNetwork` under `App/` and `Packages/`.
+- Do not boot the iOS Simulator locally.
