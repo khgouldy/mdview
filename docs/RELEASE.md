@@ -20,7 +20,7 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 2. In Xcode, scheme mdview, Any iOS Device (arm64). Product, Archive. The scheme archives with the Release configuration.
 3. In the organizer, Distribute App, App Store Connect, Upload.
 
-   From the command line instead: `make archive` then `make upload`. Both sign with an App Store Connect team API key read from `ASC_ENV` (default `~/.appstoreconnect/rosterhq.env`), and `upload` adds the Team ID from `Config/Local.xcconfig` to a copy of `Config/ExportOptions.plist` outside the repo. The key needs Admin, or App Manager with access to cloud-managed distribution certificates, so Xcode can create the distribution certificate and App Store profile.
+   From the command line instead: `make archive` then `make upload`. Both sign with an App Store Connect team API key read from `ASC_ENV` (default `~/.appstoreconnect/mdview.env`; override with `make upload ASC_ENV=...`), and `upload` adds the Team ID from `Config/Local.xcconfig` to a copy of `Config/ExportOptions.plist` outside the repo. The key needs Admin, or App Manager with access to cloud-managed distribution certificates, so Xcode can create the distribution certificate and App Store profile.
 4. When the build finishes processing, add it to an internal TestFlight group and install it on the phone.
 
 Export compliance: `Info.plist` sets `ITSAppUsesNonExemptEncryption` to `NO` (the app uses no encryption), so App Store Connect does not ask the encryption questions for each build.

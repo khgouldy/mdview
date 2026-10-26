@@ -7,9 +7,9 @@ RESOLVED = $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 IOS_DESTINATION = generic/platform=iOS
 MDVIEW_IOS_DESTINATION ?= platform=iOS Simulator,name=iPhone 16
 BUILD_DIR ?= $(HOME)/GrokBot/builds/mdview
-ARCHIVE_PATH = $(BUILD_DIR)/mdview.xcarchive
+ARCHIVE_PATH ?= $(BUILD_DIR)/mdview.xcarchive
 # Env file defining APPSTORE_CONNECT_KEY_ID, APPSTORE_CONNECT_ISSUER_ID, APPSTORE_CONNECT_KEY_PATH.
-ASC_ENV ?= $(HOME)/.appstoreconnect/rosterhq.env
+ASC_ENV ?= $(HOME)/.appstoreconnect/mdview.env
 ASC_AUTH = -allowProvisioningUpdates -authenticationKeyPath "$$(eval echo $$APPSTORE_CONNECT_KEY_PATH)" -authenticationKeyID "$$APPSTORE_CONNECT_KEY_ID" -authenticationKeyIssuerID "$$APPSTORE_CONNECT_ISSUER_ID"
 
 help:
