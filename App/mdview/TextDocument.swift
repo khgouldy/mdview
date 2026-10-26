@@ -20,6 +20,14 @@ struct TextDocument: FileDocument, Sendable {
         contentType = configuration.contentType
     }
 
+    #if DEBUG
+        /// Screenshot runs build a document from sample Markdown passed into the process.
+        init(text: String, contentType: UTType) {
+            self.text = text
+            self.contentType = contentType
+        }
+    #endif
+
     /// The Markdown UTI also conforms to `public.plain-text`, so plain text is every other type.
     var allowsRenderedMode: Bool {
         contentType.identifier == UTType.markdown.identifier || contentType.conforms(to: .markdown)
