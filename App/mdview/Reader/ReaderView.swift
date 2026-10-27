@@ -369,6 +369,7 @@ extension ReaderView {
         Menu {
             Toggle("Obsidian extras", isOn: $obsidianEnabled)
                 .accessibilityIdentifier("settings.obsidian")
+            ReadingSettingsMenu()
             Button("How to Open Files", systemImage: "questionmark.circle") {
                 showsHelp = true
             }

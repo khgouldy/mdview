@@ -8,6 +8,7 @@ struct SourceView: UIViewRepresentable {
     var matches: [Range<String.Index>] = []
     var currentMatch: Int?
 
+    @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -43,7 +44,10 @@ struct SourceView: UIViewRepresentable {
         textView.isFindInteractionEnabled = true
         textView.accessibilityIdentifier = "reader.source"
 
-        let font = Self.monospacedBodyFont(compatibleWith: textView.traitCollection)
+        let font = Self.monospacedBodyFont(
+            scale: ReadingSettings.clamped(textScale),
+            compatibleWith: textView.traitCollection,
+        )
         let ranges = utf16Ranges(in: text)
         let current = currentMatch.flatMap { ranges.indices.contains($0) ? $0 : nil }
         let signature = SourceRenderSignature(
@@ -77,8 +81,9 @@ struct SourceView: UIViewRepresentable {
     }
 
     /// 17pt is body at the large content-size category. `UIFontMetrics` scales that face for Dynamic Type.
-    private static func monospacedBodyFont(compatibleWith traits: UITraitCollection?) -> UIFont {
-        let base = UIFont.monospacedSystemFont(ofSize: 17, weight: .regular)
+    /// The reading text scale multiplies the base size before Dynamic Type does.
+    private static func monospacedBodyFont(scale: Double, compatibleWith traits: UITraitCollection?) -> UIFont {
+        let base = UIFont.monospacedSystemFont(ofSize: 17 * scale, weight: .regular)
         return UIFontMetrics(forTextStyle: .body).scaledFont(for: base, compatibleWith: traits)
     }
 

@@ -15,7 +15,8 @@ Version 0.1.0 (build 2). iOS 18 and later, iPhone and iPad.
 - A plain-text file stays on Source. The Rendered / Source switch is hidden.
 - An `http` or `https` image becomes a link labeled `Image: …`. Tap it and Safari opens. The image is not fetched.
 - A local image is read from the document's folder. Any other URL is refused.
-- Obsidian extras are on by default. They hide a leading YAML front matter block and show `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. The reader menu has one switch, Obsidian extras. Source always shows the original file.
+- The reader menu also sets text size (Text: Smaller, Larger, Reset; 0.85 to 1.6 times, on top of Dynamic Type), column width (Narrow 560, Standard 680, Wide 860 points) and font (System, Serif, Mono). Source follows the text size.
+- Obsidian extras are on by default. They hide a leading YAML front matter block and show `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. The reader menu has a switch for Obsidian extras. Source always shows the original file.
 - Find highlights matches in the source, shows `n of N` (or `No matches`), and moves to the next match when you submit. Clearing the query returns to Rendered or Source, whichever was already selected.
 
 ## Speed and layout
@@ -26,7 +27,7 @@ Opening is fast by design: parsing runs off the main actor, a placeholder draws 
 
 The app does not use the network. `URLSession`, `NWConnection`, `WKWebView`, and `CFNetwork` are lint errors under `App/` and `Packages/`.
 
-The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Two preferences are stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`) and the Obsidian switch (`obsidian.enabled`). The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
+The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Preferences stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`), the Obsidian switch (`obsidian.enabled`), and the reading settings `reader.textScale`, `reader.width` and `reader.fontDesign`. The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
 
 ## Build
 

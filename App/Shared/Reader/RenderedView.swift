@@ -14,8 +14,6 @@ struct RenderedView: View {
     /// Set by the outline sheet (V1). Each request has its own id, so jumping to the same heading twice scrolls twice.
     var jump: OutlineJump?
 
-    /// Wide enough for a reading column on iPad. Phones are narrower, so the cap does not bind.
-    private static let readableWidth: CGFloat = 680
     /// Every section after the first starts with a heading, and GitHub headings ask for 24 pt above, so this is the
     /// gap Textual would leave there in one document.
     private static let sectionSpacing: CGFloat = 24
@@ -24,6 +22,9 @@ struct RenderedView: View {
     private static let sectionSettleDelay = Duration.milliseconds(250)
 
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
+    @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
+    @AppStorage(ReadingSettings.widthKey) private var storedWidth = ReaderWidth.defaultValue.rawValue
+    @AppStorage(ReadingSettings.fontDesignKey) private var fontDesign = ReaderFontDesign.system
     @State private var prepared: PreparedDocument?
     @State private var trace = RenderTrace()
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -42,7 +43,7 @@ struct RenderedView: View {
                         placeholder
                     }
                 }
-                .frame(maxWidth: Self.readableWidth, alignment: .leading)
+                .frame(maxWidth: ReaderWidth.resolve(storedWidth).points, alignment: .leading)
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
@@ -99,7 +100,8 @@ struct RenderedView: View {
                 }
             }
         }
-        .font(.body)
+        .font(.system(.body, design: fontDesign.design))
+        .textual.fontScale(ReadingSettings.clamped(textScale))
         .textual.structuredTextStyle(.reader)
         .textual.highlighterTheme(.default)
         .modifier(ReaderTextSelection())
@@ -116,7 +118,7 @@ struct RenderedView: View {
     private var placeholder: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(verbatim: Self.placeholderText(markdown))
-                .font(.body)
+                .font(.system(.body, design: fontDesign.design))
                 .foregroundStyle(.secondary)
                 .frame(maxWidth: .infinity, alignment: .leading)
             if markdown.utf8.count > SectionSplitter.defaultMinimumBytes {

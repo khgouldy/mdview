@@ -31,10 +31,13 @@ MdV includes a Share extension, so you can choose MdV in any app's share sheet. 
 
 ## Settings stored on your device
 
-MdV stores two preferences in the app's on-device settings:
+MdV stores these preferences in the app's on-device settings:
 
 - whether documents open in Rendered or Source view
 - whether Obsidian extras are on
+- text size (`reader.textScale`, 0.85 to 1.6)
+- column width (`reader.width`: 560, 680 or 860 points)
+- font style (`reader.fontDesign`: system, serif or mono)
 
 iOS also keeps its own list of recently opened documents for the document browser. These stay on your device and are removed when you delete the app (the Recents list is managed by iOS).
 
