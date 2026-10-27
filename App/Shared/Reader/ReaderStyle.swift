@@ -1,9 +1,10 @@
+import MDCore
 import SwiftUI
 import Textual
 
 /// Textual's GitHub look with VoiceOver semantics, which Textual itself has none of. Headings are one element each,
 /// with the header trait and their level, so the rotor can jump between them. A list item reads as one element, and an
-/// unordered bullet is silent; ordered numbers stay in the label.
+/// unordered bullet is silent; ordered numbers stay in the label. A task item has no bullet and reads its state first.
 ///
 /// Headings carry no accessibility identifier: the style only sees an opaque label view, not its text. Tests find
 /// headings by label.
@@ -15,7 +16,7 @@ struct ReaderStyle: StructuredText.Style {
     let codeBlockStyle: StructuredText.GitHubCodeBlockStyle = .gitHub
     let listItemStyle = AccessibleListItemStyle()
     let unorderedListMarker = QuietBulletMarker()
-    let orderedListMarker: StructuredText.DecimalListMarker = .decimal
+    let orderedListMarker = TaskAwareDecimalMarker()
     let tableStyle = ScrollingTableStyle()
     let tableCellStyle = AccessibleTableCellStyle()
     let thematicBreakStyle: StructuredText.GitHubThematicBreakStyle = .gitHub
@@ -55,10 +56,20 @@ struct AccessibleHeadingStyle: StructuredText.HeadingStyle {
 /// `DefaultListItemStyle` as one element, so VoiceOver reads the marker and the text together instead of stopping on
 /// the marker. A nested list is part of its parent item's block, so it joins that item's element.
 struct AccessibleListItemStyle: StructuredText.ListItemStyle {
+    func makeBody(configuration: Configuration) -> some View {
+        AccessibleListItem(configuration: configuration)
+    }
+}
+
+/// Owns the item's `ListItemTask`, which its checkbox, if any, fills in and its marker reads.
+private struct AccessibleListItem: View {
+    let configuration: StructuredText.ListItemStyleConfiguration
+    @State private var task = ListItemTask()
     private let base: StructuredText.DefaultListItemStyle = .default
 
-    func makeBody(configuration: Configuration) -> some View {
+    var body: some View {
         base.makeBody(configuration: configuration)
+            .environment(task)
             .accessibilityElement(children: .combine)
     }
 }
@@ -66,17 +77,42 @@ struct AccessibleListItemStyle: StructuredText.ListItemStyle {
 /// GitHub's disc, circle and square bullets by depth, drawn as shapes. Textual's `HierarchicalSymbolListMarker` draws
 /// SF Symbols, and an `Image(systemName:)` stays in the accessibility tree with its symbol name ("circle.fill") even
 /// under `.accessibilityHidden(true)` inside the item's combined element. A shape has no element and no name.
+///
+/// A task item has no bullet, as on GitHub. Its slot holds the checkbox's state for VoiceOver instead.
 struct QuietBulletMarker: StructuredText.UnorderedListMarker {
     /// About the size of Textual's symbol bullets, which are SF Symbols at a third of the font size.
     private static let size: FontScaled<CGFloat> = .fontScaled(0.35)
     /// Textual's marker column width, so text lines up as it did with the symbol bullets.
     private static let minWidth: FontScaled<CGFloat> = .fontScaled(1.5)
 
+    @Environment(ListItemTask.self) private var task: ListItemTask?
+
     func makeBody(configuration: Configuration) -> some View {
-        BulletShape(indentationLevel: configuration.indentationLevel)
-            .accessibilityHidden(true)
-            .textual.frame(width: Self.size, height: Self.size)
-            .textual.frame(minWidth: Self.minWidth, alignment: .trailing)
+        Group {
+            if let marker = task?.marker {
+                TaskStateElement(marker: marker)
+            } else {
+                BulletShape(indentationLevel: configuration.indentationLevel)
+                    .accessibilityHidden(true)
+            }
+        }
+        .textual.frame(width: Self.size, height: Self.size)
+        .textual.frame(minWidth: Self.minWidth, alignment: .trailing)
+    }
+}
+
+/// `.decimal`, and for a task item (`1. [ ] Draft`) the checkbox's state after the number. GitHub keeps the number.
+struct TaskAwareDecimalMarker: StructuredText.OrderedListMarker {
+    private let base: StructuredText.DecimalListMarker = .decimal
+    @Environment(ListItemTask.self) private var task: ListItemTask?
+
+    func makeBody(configuration: Configuration) -> some View {
+        base.makeBody(configuration: configuration)
+            .overlay {
+                if let marker = task?.marker {
+                    TaskStateElement(marker: marker)
+                }
+            }
     }
 }
 
