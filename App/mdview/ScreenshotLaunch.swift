@@ -46,7 +46,7 @@
             guard let name = environmentName else {
                 return nil
             }
-            let text = ProcessInfo.processInfo.environment["MDVIEW_SCREENSHOT_MARKDOWN"] ?? ""
+            let text = repeated(ProcessInfo.processInfo.environment["MDVIEW_SCREENSHOT_MARKDOWN"] ?? "")
             guard !text.isEmpty else {
                 return nil
             }
@@ -54,6 +54,17 @@
                 url: URL(fileURLWithPath: name),
                 document: TextDocument(text: text, contentType: .markdown),
             )
+        }
+
+        /// `MDVIEW_SCREENSHOT_REPEAT=<n>` repeats the Markdown n times, with `{n}` replaced by 1...n, so UI tests can
+        /// open multi-megabyte files without a launch environment that large.
+        private static func repeated(_ text: String) -> String {
+            guard let count = Int(ProcessInfo.processInfo.environment["MDVIEW_SCREENSHOT_REPEAT"] ?? ""),
+                  count > 1
+            else {
+                return text
+            }
+            return (1 ... count).map { text.replacingOccurrences(of: "{n}", with: String($0)) }.joined()
         }
 
         private static func loadedFromDocuments() -> Loaded? {

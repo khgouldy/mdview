@@ -21,9 +21,13 @@ Markdown files get a segmented picker (`reader.modePicker`) and a menu (`reader.
 
 A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces the source view, highlights matches, and shows `n of N` or `No matches` in `reader.searchCount`. Submit advances and wraps. Clearing the query does not write `reader.mode`, so the previous Rendered or Source choice comes back.
 
+Matches live in `@State`. A `.task(id:)` keyed on the query and the text waits 150 ms after the last keystroke, runs `TextSearch.ranges` in a detached task (signpost `find`), and stores the result; a newer keystroke cancels the wait. Clearing the query clears the matches at once. The count row appears once the first search for a query finishes; until the next search lands it shows the previous result.
+
+Markdown over 2 MB (`PreparedDocument.largeBytes`, the same limit as `SharedContent.sourceOnlyAboveBytes`) opens in Source under a bar, "Large file. Showing Source." (`reader.largeFile`), with a Render Anyway button (`reader.renderAnyway`). The choice is `@State` for that document; the picker toggles it too, and neither writes `reader.mode`.
+
 ## Source layout
 
-The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`). The `mdviewShare` extension compiles `App/mdviewShare` and the same `App/Shared`; Textual and MDCore link statically into each target (K8). Because the extension builds with `APPLICATION_EXTENSION_API_ONLY`, `make lint` fails if any file in `App/Shared` contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
+The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `PreparedDocument`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`, `Perf/PerfSignposts`). The `mdviewShare` extension compiles `App/mdviewShare` and the same `App/Shared`; Textual and MDCore link statically into each target (K8). Because the extension builds with `APPLICATION_EXTENSION_API_ONLY`, `make lint` fails if any file in `App/Shared` contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
 
 ## Share extension
 
@@ -42,7 +46,7 @@ SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registere
 1. `ShareViewController.viewDidLoad` flattens the attachments of every input item, builds a `SharedCandidate` per attachment (registered types, `suggestedName`) and calls `SharedItemSelection.pick` with `UTType` conformance. It installs `UIHostingController(rootView: SharedReaderView(state:))` at once, showing the title and a progress view.
 2. A detached task runs `SharedItemLoader.load` off the main actor: `loadFileRepresentation(for:)` (bytes copied inside the callback, size checked before reading), then `loadDataRepresentation(for:)`, then `loadItem` as `String`, `Data` or a security-scoped file `URL`. A `public.file-url` selection goes straight to `loadItem`.
 3. `SharedContent.make` refuses items over `limitBytes` (5 MB) and binary data (a NUL in the first 8 KB, unless a UTF-16 BOM leads), decodes with `TextDecoding`, and refuses whitespace-only text.
-4. `SharedReaderState.finish` moves the view from loading to the reader or a message.
+4. `SharedReaderState.finish` moves the view from loading to the reader or a message. For Markdown it can render, it first calls `DocumentPreparer.shared.prewarm`, so the parse starts before SwiftUI draws the reader; `RenderedView` then joins that task or finds it cached. The first frame is the plain-text placeholder.
 
 **Reader.** `SharedReaderView` is a `NavigationStack` titled with `SharedContent.title` ("Shared Text" for a nameless item). Markdown gets a Rendered / Source picker (`share.modePicker`) over the same `RenderedView` and `SourceView` as the app. The choice is `@State`, not `reader.mode`. Markdown over `sourceOnlyAboveBytes` (2 MB) and every non-Markdown type open in Source only. Done (`share.done`) and swiping the sheet away call `completeRequest(returningItems: [])`. Errors show the message (`share.error`) with Done still there:
 
@@ -68,7 +72,19 @@ The product name comes from `AppName.display`.
 - `.textual.textSelection(.enabled)`
 - width capped at 680 points
 
-Textual parses and draws. This repo does not contain a Markdown renderer or a syntax highlighter. `RenderPipeline.prepare(_:obsidian:math:)` in MDCore is the only call `RenderedView` makes. It runs two preprocessors before Textual sees the string (`math` is reserved and ignored until the math bead):
+Textual draws; nothing parses on the main actor. This repo does not contain a Markdown renderer or a syntax highlighter.
+
+**Preparing.** `DocumentPreparer` (an actor, `App/Shared/Reader/PreparedDocument.swift`) turns a `PreparedDocument.Key` (text, `obsidian`, `math`) into a `PreparedDocument` in a detached task:
+
+1. `RenderPipeline.prepare` (below). Signpost `prepare` covers this and step 2.
+2. `SectionSplitter.sections`: at or under 64 KB the whole text is one section; above, it is cut before each ATX heading at column 0 outside fences, HTML comments and raw HTML blocks. `SectionSplitter.grouped` joins those into sections of at least 8 KB (`PreparedDocument.groupBytes`), so a 1 MB note is about 130 views rather than one per heading.
+3. Per section, `AttributedString(markdown:including: \.textual, options: .init(), baseURL: nil)`, exactly what Textual's `AttributedStringMarkdownParser.markdown()` does (signpost `parse`). Link reference definitions are the one thing that crosses a cut, so each section's parse input gets the one-line definitions it uses appended (`SectionSplitter.parseInput`); a CHANGELOG's `[1.0.0]: …` links still resolve.
+
+The actor shares one task between concurrent requests for a key and keeps the last three documents (up to 3 MB of source; the newest is always kept). `cached(_:)` is synchronous, so a cached document draws on the first frame: switching Source → Rendered doesn't flash. `PreparedDocument` holds `sections: [PreparedSection]` (`id`, `markup`, `attributed`), `byteCount` and `isLarge` (over 2 MB).
+
+**Drawing.** Until the document is ready, `RenderedView` shows the first ~2 KB of the source, cut at a line, as plain secondary body text (`reader.placeholder`), with a spinner when the file is over 64 KB. Then one section is `StructuredText(markup, parser: PreparsedParser(section:))`, laid out as before. Several sections are a `LazyVStack(spacing: 24)` of those, each `.id("section-\(index)")`; every later section starts at a heading, and 24 pt is the gap GitHub style puts above one. `PreparsedParser` is a `MarkupParser` that returns the cached `AttributedString` for its section's markup (anything else falls back to Textual's parser). Text selection works within a section. The preparation restarts when the text or the Obsidian setting changes.
+
+**Pipeline.** `RenderPipeline.prepare(_:obsidian:math:)` in MDCore is the only text transform rendering uses. It runs two preprocessors before the parse (`math` is reserved and ignored until the math bead):
 
 1. When Obsidian extras are on, `ObsidianPreprocessor.process` drops a leading `---` / `...` front matter block and rewrites wikilinks to plain text. Fenced code, inline code, `![[embeds]]`, and callout blocks are left alone. Source view never runs this.
 2. `RemoteImages.linkify` always rewrites `![alt](http://…)` and `![alt](https://…)` outside code into `[Image: alt](url)`.
@@ -96,6 +112,7 @@ Foundation only. No package dependencies. iOS 18 and macOS 15, so `swift test` r
 | `TextSearch` | Case- and diacritic-insensitive ranges, including overlaps |
 | `MarkdownFileTypes` | Markdown and plain-text extensions, `isMarkdown(pathExtension:)` |
 | `RenderPipeline` | `prepare(_:obsidian:math:)`, the one entry point for rendered text |
+| `SectionSplitter` | `sections(_:minimumBytes:)` cuts over 64 KB at top-level ATX headings outside code and HTML blocks (exact rejoin, CRLF-safe); `grouped(_:targetBytes:)`; `linkDefinitions(in:)` and `parseInput(for:definitions:)` carry reference definitions across cuts. The line scanner is `MarkdownBlockScanner.swift` |
 | `SharedItemSelection` | Ranks a share request's attachments and types (`SharedCandidate` in, `SharedSelection` out); conformance is a closure, with a built-in table for common system types |
 | `SharedContent` | Share limits (5 MB, Source above 2 MB), binary sniff, title, Markdown decision, `SharedContentError` messages |
 

@@ -35,10 +35,20 @@ final class SharedReaderState {
         title = SharedContent.title(suggestedName: load.name)
         switch load.result {
         case let .success(content):
+            if content.allowsRendered {
+                // Same preparer and key as `RenderedView`, so its first frame finds the parse running or done.
+                DocumentPreparer.shared.prewarm(text: content.text, obsidian: Self.obsidianEnabled)
+            }
             phase = .loaded(content)
         case let .failure(error):
             phase = .failed(error)
         }
+    }
+
+    /// `RenderedView`'s `@AppStorage("obsidian.enabled")`, default on. The extension has its own defaults and writes
+    /// none, so this is the default unless a later build adds the setting here.
+    private static var obsidianEnabled: Bool {
+        UserDefaults.standard.object(forKey: "obsidian.enabled") as? Bool ?? true
     }
 
     /// Plain text for "Copy" in the info panel, so a support email can carry it.
@@ -108,6 +118,7 @@ struct SharedReaderView: View {
                 .accessibilityIdentifier("share.loading")
         case let .loaded(content):
             if content.allowsRendered, mode == .rendered {
+                // RenderedView prepares through `DocumentPreparer`; its first frame is the plain-text placeholder.
                 RenderedView(markdown: content.text)
                     .accessibilityIdentifier("reader.rendered")
             } else {

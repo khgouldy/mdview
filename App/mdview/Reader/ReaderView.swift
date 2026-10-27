@@ -3,6 +3,7 @@ import SwiftUI
 
 /// Document viewer. Markdown files toggle Rendered and Source. Plain text is source only.
 /// A non-empty find query shows the source with matches highlighted, then returns to the stored mode.
+/// Markdown over 2 MB opens in Source with a "Render Anyway" bar; that choice is per document and never stored.
 struct ReaderView: View {
     let document: TextDocument
 
@@ -13,10 +14,18 @@ struct ReaderView: View {
 
     @State private var searchQuery = ""
     @State private var currentMatch = 0
+    @State private var find = FindResult()
+    @State private var renderAnyway = false
+
+    /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
+    private static let findDebounce = Duration.milliseconds(150)
 
     var body: some View {
         content
             .task { PerfSignposts.beginOpen(bytes: document.text.utf8.count) }
+            .task(id: findKey) {
+                await updateFind(findKey)
+            }
             .navigationTitle(fileName)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(
@@ -29,7 +38,11 @@ struct ReaderView: View {
             }
             .safeAreaInset(edge: .top, spacing: 0) {
                 if isFindActive {
-                    searchCount
+                    if find.key != nil {
+                        searchCount
+                    }
+                } else if showsLargeFileBar {
+                    largeFileBar
                 }
             }
             .toolbar {
@@ -72,6 +85,24 @@ struct ReaderView: View {
             .accessibilityAddTraits(.updatesFrequently)
     }
 
+    private var largeFileBar: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text("Large file. Showing Source.")
+                .foregroundStyle(.secondary)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            Button("Render Anyway") {
+                renderAnyway = true
+            }
+            .accessibilityIdentifier("reader.renderAnyway")
+        }
+        .font(.footnote)
+        .padding(.horizontal, 16)
+        .padding(.vertical, 6)
+        .background(.bar)
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("reader.largeFile")
+    }
+
     private var readerMenu: some View {
         Menu {
             Toggle("Obsidian extras", isOn: $obsidianEnabled)
@@ -88,7 +119,7 @@ struct ReaderView: View {
         if showsSource {
             SourceView(
                 text: document.text,
-                matches: isFindActive ? findMatches : [],
+                matches: isFindActive ? currentMatches : [],
                 currentMatch: activeMatchIndex,
             )
         } else {
@@ -106,14 +137,15 @@ struct ReaderView: View {
     }
 
     private var activeMatchIndex: Int? {
-        guard isFindActive, !findMatches.isEmpty else {
+        let matches = currentMatches
+        guard isFindActive, !matches.isEmpty else {
             return nil
         }
-        return min(currentMatch, findMatches.count - 1)
+        return min(currentMatch, matches.count - 1)
     }
 
     private var modePicker: some View {
-        Picker("Mode", selection: $mode) {
+        Picker("Mode", selection: modeBinding) {
             ForEach(ReaderMode.allCases) { item in
                 Text(item.title).tag(item)
             }
@@ -139,12 +171,38 @@ struct ReaderView: View {
         !searchQuery.isEmpty
     }
 
-    private var findMatches: [Range<String.Index>] {
-        TextSearch.ranges(of: searchQuery, in: document.text)
+    private var findKey: FindKey {
+        FindKey(query: searchQuery, text: document.text)
+    }
+
+    /// The last finished search, while it is for this text. Indices into an older text would be invalid.
+    private var currentMatches: [Range<String.Index>] {
+        find.key?.text == document.text ? find.matches : []
+    }
+
+    /// Clearing the query clears matches at once. Otherwise wait out the debounce, then search off the main actor.
+    /// A newer key cancels this task, so a stale search never overwrites a fresh one.
+    private func updateFind(_ key: FindKey) async {
+        guard !key.query.isEmpty else {
+            find = FindResult()
+            return
+        }
+        do {
+            try await Task.sleep(for: Self.findDebounce)
+        } catch {
+            return
+        }
+        let matches = await Task.detached(priority: .userInitiated) {
+            PerfSignposts.measure("find") { TextSearch.ranges(of: key.query, in: key.text) }
+        }.value
+        guard !Task.isCancelled else {
+            return
+        }
+        find = FindResult(key: key, matches: matches)
     }
 
     private var findSummary: String {
-        let total = findMatches.count
+        let total = currentMatches.count
         guard total > 0 else {
             return "No matches"
         }
@@ -153,16 +211,45 @@ struct ReaderView: View {
     }
 
     private func advanceMatch() {
-        let total = findMatches.count
+        let total = currentMatches.count
         guard total > 0 else {
             return
         }
         currentMatch = (min(currentMatch, total - 1) + 1) % total
     }
 
-    /// Plain text never writes `reader.mode`. The stored choice is for Markdown documents.
+    /// Plain text never writes `reader.mode`. The stored choice is for Markdown documents. Large Markdown shows
+    /// Source until the reader asks for Rendered.
     private var displayedMode: ReaderMode {
-        showsModePicker ? mode : .source
+        guard showsModePicker else {
+            return .source
+        }
+        if isLargeFile {
+            return renderAnyway ? .rendered : .source
+        }
+        return mode
+    }
+
+    /// For a large file the picker toggles `renderAnyway`, so one big file doesn't change the stored mode.
+    private var modeBinding: Binding<ReaderMode> {
+        Binding(
+            get: { displayedMode },
+            set: { newValue in
+                if isLargeFile {
+                    renderAnyway = newValue == .rendered
+                } else {
+                    mode = newValue
+                }
+            },
+        )
+    }
+
+    private var isLargeFile: Bool {
+        PreparedDocument.isLarge(byteCount: document.text.utf8.count)
+    }
+
+    private var showsLargeFileBar: Bool {
+        showsModePicker && isLargeFile && !renderAnyway
     }
 
     private var showsModePicker: Bool {
@@ -182,4 +269,16 @@ struct ReaderView: View {
     private var resolvedFileURL: URL? {
         readerContext?.fileURL ?? documentConfiguration?.fileURL
     }
+}
+
+/// What a search depends on. The text compares by storage first, so this is cheap for one document.
+private struct FindKey: Equatable, Sendable {
+    var query: String
+    var text: String
+}
+
+/// The matches for `key`, or nothing yet (`key == nil`).
+private struct FindResult {
+    var key: FindKey?
+    var matches: [Range<String.Index>] = []
 }

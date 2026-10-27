@@ -18,6 +18,7 @@ final class PerformanceTests: XCTestCase {
         static let prepare1m = 135.0
         static let search20k = 0.26
         static let search1m = 150.0
+        static let split1m = 28.0
     }
 
     private let note20k = PerfFixtures.note(bytes: 20 * 1024)
@@ -78,6 +79,18 @@ final class PerformanceTests: XCTestCase {
     func testSearch1m() {
         assertBudget("search 1 MB", recorded: Recorded.search1m) {
             XCTAssertFalse(TextSearch.ranges(of: Self.query, in: note1m).isEmpty)
+        }
+    }
+
+    /// Everything MDCore adds to the reader's background prepare (M8): cutting the prepared 1 MB note into sections,
+    /// grouping them, collecting link definitions and building each section's parse input.
+    func testSplit1m() {
+        let prepared = RenderPipeline.prepare(note1m, obsidian: true)
+        assertBudget("split 1 MB", recorded: Recorded.split1m) {
+            let sections = SectionSplitter.grouped(SectionSplitter.sections(prepared), targetBytes: 8 * 1024)
+            let definitions = SectionSplitter.linkDefinitions(in: prepared)
+            let inputs = sections.map { SectionSplitter.parseInput(for: $0, definitions: definitions) }
+            XCTAssertGreaterThan(inputs.count, 1)
         }
     }
 
