@@ -168,20 +168,12 @@
         var body: some View {
             NavigationStack {
                 ReaderView(document: shot.document)
-                    .environment(\.screenshotFileURL, shot.url)
+                    .environment(
+                        \.readerContext,
+                        ReaderContext(fileURL: shot.url, displayName: shot.url.lastPathComponent),
+                    )
             }
             .preferredColorScheme(ScreenshotLaunch.colorScheme)
-        }
-    }
-
-    private struct ScreenshotFileURLKey: EnvironmentKey {
-        static let defaultValue: URL? = nil
-    }
-
-    extension EnvironmentValues {
-        var screenshotFileURL: URL? {
-            get { self[ScreenshotFileURLKey.self] }
-            set { self[ScreenshotFileURLKey.self] = newValue }
         }
     }
 #endif

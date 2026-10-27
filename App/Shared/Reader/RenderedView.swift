@@ -28,7 +28,6 @@ struct RenderedView: View {
 
     /// Front matter and wikilinks change only when Obsidian extras are on. Remote images always become links.
     private var markdownForDisplay: String {
-        let source = obsidianEnabled ? ObsidianPreprocessor.process(markdown) : markdown
-        return RemoteImages.linkify(source)
+        RenderPipeline.prepare(markdown, obsidian: obsidianEnabled, math: false)
     }
 }

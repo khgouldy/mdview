@@ -134,6 +134,19 @@ def check_markdown_types(plist_bytes, swift_text):
     return errors
 
 
+def check_shared_extension_safe(files):
+    """(g) Nothing under App/Shared uses UIApplication.shared; an app extension cannot call it.
+    files: {path: text}."""
+    errors = []
+    for path, text in files.items():
+        if not path.startswith("App/Shared/"):
+            continue
+        for number, line in enumerate(text.splitlines(), 1):
+            if "UIApplication.shared" in line:
+                errors.append(f"{path}:{number}: UIApplication.shared is not extension-safe")
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
@@ -141,6 +154,7 @@ CHECKS = [
     ("no TRUEPREDICATE in Info.plist", "predicate"),
     ("display name: Info.plist, project.yml and listing.md agree", "display"),
     ("markdown types: Info.plist matches MarkdownFileTypes.swift", "types"),
+    ("App/Shared is extension-safe: no UIApplication.shared", "shared"),
 ]
 
 
@@ -180,6 +194,9 @@ def run():
         ),
         "types": check_markdown_types(
             (ROOT / "App/mdview/Info.plist").read_bytes(), read_text(SWIFT_TYPES_PATH) or ""
+        ),
+        "shared": check_shared_extension_safe(
+            {p: text for p in tracked if p.startswith("App/Shared/") and (text := read_text(p)) is not None}
         ),
     }
     failed = False
@@ -221,6 +238,12 @@ def self_test():
             {"p": good_privacy},
         ),
         ("missing keys", check_privacy_manifests, {"p": plistlib.dumps({})}, {"p": good_privacy}),
+        (
+            "shared UIApplication",
+            check_shared_extension_safe,
+            {"App/Shared/A.swift": "UIApplication.shared.open(u)"},
+            {"App/Shared/A.swift": "let x = 1", "App/mdview/B.swift": "UIApplication.shared"},
+        ),
         ("truepredicate", check_no_truepredicate, {"Info.plist": "<string>TRUEPREDICATE</string>"}, {"Info.plist": "<dict/>"}),
     ]
     plist_ok = "<key>CFBundleDisplayName</key>\n\t<string>$(APP_DISPLAY_NAME)</string>"

@@ -1,25 +1,6 @@
 import MDCore
 import SwiftUI
 
-/// Persisted Rendered / Source choice. Raw values are the `@AppStorage("reader.mode")` strings.
-enum ReaderMode: String, CaseIterable, Identifiable {
-    case rendered
-    case source
-
-    var id: Self {
-        self
-    }
-
-    var title: String {
-        switch self {
-        case .rendered:
-            "Rendered"
-        case .source:
-            "Source"
-        }
-    }
-}
-
 /// Document viewer. Markdown files toggle Rendered and Source. Plain text is source only.
 /// A non-empty find query shows the source with matches highlighted, then returns to the stored mode.
 struct ReaderView: View {
@@ -28,9 +9,7 @@ struct ReaderView: View {
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @Environment(\.documentConfiguration) private var documentConfiguration
-    #if DEBUG
-        @Environment(\.screenshotFileURL) private var screenshotFileURL
-    #endif
+    @Environment(\.readerContext) private var readerContext
 
     @State private var searchQuery = ""
     @State private var currentMatch = 0
@@ -194,17 +173,12 @@ struct ReaderView: View {
     }
 
     private var fileName: String {
-        let name = resolvedFileURL?.lastPathComponent ?? ""
+        let name = readerContext?.displayName ?? resolvedFileURL?.lastPathComponent ?? ""
         return name.isEmpty ? "Document" : name
     }
 
-    /// DocumentGroup sets the file URL. Screenshot runs pass the same URL in Debug builds.
+    /// The injected context wins (screenshot runs); DocumentGroup supplies the URL otherwise.
     private var resolvedFileURL: URL? {
-        #if DEBUG
-            if let screenshotFileURL {
-                return screenshotFileURL
-            }
-        #endif
-        return documentConfiguration?.fileURL
+        readerContext?.fileURL ?? documentConfiguration?.fileURL
     }
 }

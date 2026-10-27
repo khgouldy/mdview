@@ -21,6 +21,10 @@ Markdown files get a segmented picker (`reader.modePicker`) and a menu (`reader.
 
 A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces the source view, highlights matches, and shows `n of N` or `No matches` in `reader.searchCount`. Submit advances and wraps. Clearing the query does not write `reader.mode`, so the previous Rendered or Source choice comes back.
 
+## Source layout
+
+The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`). `App/Shared` is written for reuse by an app extension, so `make lint` fails if any file there contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
+
 ## Rendered Markdown
 
 `RenderedView` (`reader.rendered`) puts Textual's `StructuredText` in a scroll view:
@@ -30,7 +34,7 @@ A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces 
 - `.textual.textSelection(.enabled)`
 - width capped at 680 points
 
-Textual parses and draws. This repo does not contain a Markdown renderer or a syntax highlighter. Two preprocessors run before Textual sees the string:
+Textual parses and draws. This repo does not contain a Markdown renderer or a syntax highlighter. `RenderPipeline.prepare(_:obsidian:math:)` in MDCore is the only call `RenderedView` makes. It runs two preprocessors before Textual sees the string (`math` is reserved and ignored until the math bead):
 
 1. When Obsidian extras are on, `ObsidianPreprocessor.process` drops a leading `---` / `...` front matter block and rewrites wikilinks to plain text. Fenced code, inline code, `![[embeds]]`, and callout blocks are left alone. Source view never runs this.
 2. `RemoteImages.linkify` always rewrites `![alt](http://…)` and `![alt](https://…)` outside code into `[Image: alt](url)`.
