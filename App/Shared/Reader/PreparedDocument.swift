@@ -153,9 +153,11 @@ struct PreparsedParser: MarkupParser {
     /// Math needs Textual's own parser (its pattern pass is `@MainActor`), so a math document is parsed here and the
     /// off-main parse is skipped. Off by default, so the common path stays free.
     var math = false
+    /// Textual's math pass runs on the main actor, so a section over this (or with no `$`) keeps the off-main parse.
+    static let mathParseLimit = 64 * 1024
 
     func attributedString(for input: String) throws -> AttributedString {
-        if math {
+        if math, section.markup.utf8.count <= Self.mathParseLimit, section.markup.contains("$") {
             return try AttributedStringMarkdownParser.markdown(syntaxExtensions: [.math]).attributedString(for: input)
         }
         if input == section.markup {

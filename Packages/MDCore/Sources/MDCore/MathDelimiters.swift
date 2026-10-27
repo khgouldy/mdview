@@ -38,22 +38,36 @@ public enum MathDelimiters {
         let chars = Array(text)
         var output = ""
         var index = 0
+        // A search that failed once fails for every later start in the same stretch, so remember it. Without this a
+        // run of unmatched `\(` or backticks rescans to the paragraph end each time (quadratic).
+        var failedDelimiter: [Character: Int] = [:]
+        var failedRuns: Set<Int> = []
         while index < chars.count {
             let char = chars[index]
             if char == "`" {
                 let run = backtickRun(chars, at: index)
                 output += String(chars[index ..< min(index + run, chars.count)])
                 index += run
-                if let close = closingRun(chars, from: index, length: run) {
-                    output += String(chars[index ..< close + run])
-                    index = close + run
+                if !failedRuns.contains(run) {
+                    if let close = closingRun(chars, from: index, length: run) {
+                        output += String(chars[index ..< close + run])
+                        index = close + run
+                    } else {
+                        failedRuns.insert(run)
+                    }
                 }
             } else if char == "\\", index + 1 < chars.count {
                 let next = chars[index + 1]
-                if next == "(" || next == "[", let close = closingDelimiter(chars, from: index + 2, kind: next) {
+                let skip = (failedDelimiter[next] ?? 0) > index
+                let close = (next == "(" || next == "[") && !skip
+                    ? closingDelimiter(chars, from: index + 2, kind: next) : nil
+                if let close = close?.found {
                     output += rewrite(chars[index + 2 ..< close], display: next == "[")
                     index = close + 2
                 } else {
+                    if let stop = close?.stop {
+                        failedDelimiter[next] = stop
+                    }
                     output += String(chars[index ... index + 1])
                     index += 2
                 }
@@ -100,7 +114,12 @@ public enum MathDelimiters {
     }
 
     /// The index of the backslash that closes `\(` or `\[`, searched up to the end of the paragraph.
-    private static func closingDelimiter(_ chars: [Character], from start: Int, kind: Character) -> Int? {
+    /// `found` is the closing backslash; when there is none, `stop` is where the search gave up.
+    private static func closingDelimiter(
+        _ chars: [Character],
+        from start: Int,
+        kind: Character,
+    ) -> (found: Int?, stop: Int) {
         let close: Character = kind == "(" ? ")" : "]"
         var index = start
         var lineBreaks = 0
@@ -108,7 +127,7 @@ public enum MathDelimiters {
             let char = chars[index]
             if char == "\\" {
                 if index + 1 < chars.count, chars[index + 1] == close {
-                    return index > start ? index : nil
+                    return (index > start ? index : nil, index)
                 }
                 index += 2
                 lineBreaks = 0
@@ -117,14 +136,14 @@ public enum MathDelimiters {
             if char.isNewline {
                 lineBreaks += 1
                 if lineBreaks == 2 {
-                    return nil
+                    return (nil, index)
                 }
             } else if char != " ", char != "\t" {
                 lineBreaks = 0
             }
             index += 1
         }
-        return nil
+        return (nil, chars.count)
     }
 }
 

@@ -60,3 +60,10 @@ struct MathDelimitersTests {
         #expect(RenderPipeline.prepare(input, obsidian: false, math: true) == "see $a$\n")
     }
 }
+
+struct MathDelimitersScalingTests {
+    @Test func `many unmatched openers stay fast and unchanged`() {
+        let text = String(repeating: "\\(", count: 20000) + "\n" + String(repeating: "`a", count: 20000)
+        #expect(MathDelimiters.convert(text) == text)
+    }
+}
