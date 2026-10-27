@@ -108,6 +108,9 @@ private struct ScreenshotSession {
         XCUIDevice.shared.orientation = .portrait
         try requireReader(app, title: "Launch Checklist.md")
         try selectMode("Rendered", in: app)
+        let menu = app.buttons["reader.menu"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 8), app.debugDescription)
+        menu.tap()
         let button = app.buttons["reader.outline"]
         XCTAssertTrue(button.waitForExistence(timeout: 8), app.debugDescription)
         button.tap()

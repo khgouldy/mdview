@@ -24,7 +24,7 @@ final class ReaderAccessibilityTests: XCTestCase {
         let build = containing("Build", in: app)
         XCTAssertTrue(build.waitForExistence(timeout: 20), app.debugDescription)
 
-        // The toolbar's ellipsis.circle menu is not a bullet.
+        // The toolbar's menu is not a bullet, should its label ever fall back to a symbol name.
         let symbolLabels = app.descendants(matching: .any).matching(
             NSPredicate(format: "label CONTAINS[c] %@ AND identifier != %@", "circle", "reader.menu"),
         )

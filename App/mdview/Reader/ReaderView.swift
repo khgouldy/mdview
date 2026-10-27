@@ -9,7 +9,7 @@ struct ReaderView: View {
 
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
     @AppStorage("obsidian.enabled") var obsidianEnabled = true
-    @AppStorage("reader.math") private var mathEnabled = false
+    @AppStorage("reader.math") var mathEnabled = false
     @AppStorage(ReadingSettings.textScaleKey) var textScale = ReadingSettings.defaultTextScale
     @AppStorage(ReadingSettings.fontDesignKey) var fontDesign = ReaderFontDesign.system
     @Environment(\.documentConfiguration) private var documentConfiguration
@@ -20,8 +20,8 @@ struct ReaderView: View {
     @State private var currentMatch = 0
     @State private var find = FindResult()
     @State private var renderAnyway = false
-    @State private var showsHelp = false
-    @State private var headings: [OutlineHeading] = []
+    @State var showsHelp = false
+    @State var headings: [OutlineHeading] = []
     @State var showsOutline = false
     @State private var outlineJump: OutlineJump?
     @State var pdfExport = PDFExport()
@@ -61,17 +61,12 @@ struct ReaderView: View {
                 ToolbarItem(placement: .principal) {
                     titleView
                 }
-                if showsOutlineButton {
-                    ToolbarItem(placement: .topBarTrailing) {
-                        outlineButton
-                    }
+                ToolbarItem(placement: .topBarTrailing) {
+                    readerMenu
                 }
                 if showsModePicker {
                     ToolbarItem(placement: .bottomBar) {
                         modePicker
-                    }
-                    ToolbarItem(placement: .topBarTrailing) {
-                        readerMenu
                     }
                 }
             }
@@ -159,7 +154,7 @@ struct ReaderView: View {
     }
 
     /// Find always reads the source. Leaving find for Source keeps the same text view.
-    private var showsSource: Bool {
+    var showsSource: Bool {
         isFindActive || displayedMode == .source
     }
 
@@ -257,7 +252,7 @@ struct ReaderView: View {
         )
     }
 
-    private var isLargeFile: Bool {
+    var isLargeFile: Bool {
         PreparedDocument.isLarge(byteCount: document.text.utf8.count)
     }
 
@@ -284,8 +279,8 @@ struct ReaderView: View {
     }
 }
 
-/// What the outline depends on. `isWanted` is false while the reader shows Source, so a large file isn't parsed twice
-/// for a sheet nobody can open.
+/// What the outline depends on. `isWanted` is false for plain text and for a large file showing Source, so a large
+/// file isn't parsed twice for a sheet nobody can open.
 private struct OutlineKey: Equatable, Sendable {
     var text: String
     var obsidian: Bool
@@ -344,11 +339,10 @@ extension ReaderView {
     }
 
     private var outlineKey: OutlineKey {
-        OutlineKey(text: document.text, obsidian: obsidianEnabled, isWanted: showsModePicker && !showsSource)
+        OutlineKey(text: document.text, obsidian: obsidianEnabled, isWanted: outlineIsReachable)
     }
 
-    /// Finds headings off the main actor. Source keeps the last outline, so returning to Rendered shows the button
-    /// at once.
+    /// Finds headings off the main actor. A large file in Source keeps the last outline.
     private func updateOutline(_ key: OutlineKey) async {
         guard key.isWanted else {
             return
@@ -360,41 +354,5 @@ extension ReaderView {
             return
         }
         headings = found
-    }
-
-    /// The outline jumps within the rendered view, and a one-heading document has nowhere to jump.
-    var showsOutlineButton: Bool {
-        showsModePicker && !showsSource && headings.count >= 2
-    }
-
-    private var outlineButton: some View {
-        Button("Outline", systemImage: "list.bullet.indent") {
-            showsOutline = true
-        }
-        .accessibilityIdentifier("reader.outline")
-    }
-
-    private var readerMenu: some View {
-        Menu {
-            Toggle("Obsidian extras", isOn: $obsidianEnabled)
-                .accessibilityIdentifier("settings.obsidian")
-            Toggle("Math (LaTeX)", isOn: $mathEnabled)
-                .accessibilityIdentifier("settings.math")
-            ReadingSettingsMenu()
-            ExportMenu(
-                markdown: document.text,
-                baseDirectory: resolvedFileURL?.deletingLastPathComponent(),
-                fileName: fileName,
-                export: pdfExport,
-            )
-            Button("How to Open Files", systemImage: "questionmark.circle") {
-                showsHelp = true
-            }
-            .accessibilityIdentifier("reader.help")
-        } label: {
-            Image(systemName: "ellipsis.circle")
-        }
-        .accessibilityIdentifier("reader.menu")
-        .accessibilityLabel("Settings")
     }
 }
