@@ -18,6 +18,9 @@ struct ReaderView: View {
     @State private var find = FindResult()
     @State private var renderAnyway = false
     @State private var showsHelp = false
+    @State private var headings: [OutlineHeading] = []
+    @State private var showsOutline = false
+    @State private var outlineJump: OutlineJump?
 
     /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
     private static let findDebounce = Duration.milliseconds(150)
@@ -27,6 +30,9 @@ struct ReaderView: View {
             .task { PerfSignposts.beginOpen(bytes: document.text.utf8.count) }
             .task(id: findKey) {
                 await updateFind(findKey)
+            }
+            .task(id: outlineKey) {
+                await updateOutline(outlineKey)
             }
             .navigationTitle(fileName)
             .navigationBarTitleDisplayMode(.inline)
@@ -51,6 +57,11 @@ struct ReaderView: View {
                 ToolbarItem(placement: .principal) {
                     titleView
                 }
+                if showsOutlineButton {
+                    ToolbarItem(placement: .topBarTrailing) {
+                        outlineButton
+                    }
+                }
                 if showsModePicker {
                     ToolbarItem(placement: .bottomBar) {
                         modePicker
@@ -63,6 +74,12 @@ struct ReaderView: View {
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
             .sheet(isPresented: $showsHelp) {
                 OpenFilesHelpView()
+            }
+            .sheet(isPresented: $showsOutline) {
+                OutlineSheet(headings: headings) { heading in
+                    showsOutline = false
+                    outlineJump = OutlineJump(heading: heading)
+                }
             }
         #if DEBUG
             .onAppear(perform: applyScreenshotQuery)
@@ -125,6 +142,7 @@ struct ReaderView: View {
             RenderedView(
                 markdown: document.text,
                 baseDirectory: resolvedFileURL?.deletingLastPathComponent(),
+                jump: outlineJump,
             )
             .accessibilityIdentifier("reader.rendered")
         }
@@ -204,44 +222,6 @@ struct ReaderView: View {
         find.key?.text == document.text ? find.matches : []
     }
 
-    /// Clearing the query clears matches at once. Otherwise wait out the debounce, then search off the main actor.
-    /// A newer key cancels this task, so a stale search never overwrites a fresh one.
-    private func updateFind(_ key: FindKey) async {
-        guard !key.query.isEmpty else {
-            find = FindResult()
-            return
-        }
-        do {
-            try await Task.sleep(for: Self.findDebounce)
-        } catch {
-            return
-        }
-        let matches = await Task.detached(priority: .userInitiated) {
-            PerfSignposts.measure("find") { TextSearch.ranges(of: key.query, in: key.text) }
-        }.value
-        guard !Task.isCancelled else {
-            return
-        }
-        find = FindResult(key: key, matches: matches)
-    }
-
-    private var findSummary: String {
-        let total = currentMatches.count
-        guard total > 0 else {
-            return "No matches"
-        }
-        let position = min(currentMatch, total - 1) + 1
-        return "\(position) of \(total)"
-    }
-
-    private func advanceMatch() {
-        let total = currentMatches.count
-        guard total > 0 else {
-            return
-        }
-        currentMatch = (min(currentMatch, total - 1) + 1) % total
-    }
-
     /// Plain text never writes `reader.mode`. The stored choice is for Markdown documents. Large Markdown shows
     /// Source until the reader asks for Rendered.
     private var displayedMode: ReaderMode {
@@ -296,6 +276,14 @@ struct ReaderView: View {
 }
 
 /// What a search depends on. The text compares by storage first, so this is cheap for one document.
+/// What the outline depends on. `isWanted` is false while the reader shows Source, so a large file isn't parsed twice
+/// for a sheet nobody can open.
+private struct OutlineKey: Equatable, Sendable {
+    var text: String
+    var obsidian: Bool
+    var isWanted: Bool
+}
+
 private struct FindKey: Equatable, Sendable {
     var query: String
     var text: String
@@ -308,6 +296,75 @@ private struct FindResult {
 }
 
 extension ReaderView {
+    /// Clearing the query clears matches at once. Otherwise wait out the debounce, then search off the main actor.
+    /// A newer key cancels this task, so a stale search never overwrites a fresh one.
+    private func updateFind(_ key: FindKey) async {
+        guard !key.query.isEmpty else {
+            find = FindResult()
+            return
+        }
+        do {
+            try await Task.sleep(for: Self.findDebounce)
+        } catch {
+            return
+        }
+        let matches = await Task.detached(priority: .userInitiated) {
+            PerfSignposts.measure("find") { TextSearch.ranges(of: key.query, in: key.text) }
+        }.value
+        guard !Task.isCancelled else {
+            return
+        }
+        find = FindResult(key: key, matches: matches)
+    }
+
+    private var findSummary: String {
+        let total = currentMatches.count
+        guard total > 0 else {
+            return "No matches"
+        }
+        let position = min(currentMatch, total - 1) + 1
+        return "\(position) of \(total)"
+    }
+
+    private func advanceMatch() {
+        let total = currentMatches.count
+        guard total > 0 else {
+            return
+        }
+        currentMatch = (min(currentMatch, total - 1) + 1) % total
+    }
+
+    private var outlineKey: OutlineKey {
+        OutlineKey(text: document.text, obsidian: obsidianEnabled, isWanted: showsModePicker && !showsSource)
+    }
+
+    /// Finds headings off the main actor. Source keeps the last outline, so returning to Rendered shows the button
+    /// at once.
+    private func updateOutline(_ key: OutlineKey) async {
+        guard key.isWanted else {
+            return
+        }
+        let found = await Task.detached(priority: .utility) {
+            HeadingOutline.headings(in: key.text, obsidian: key.obsidian, groupBytes: PreparedDocument.groupBytes)
+        }.value
+        guard !Task.isCancelled else {
+            return
+        }
+        headings = found
+    }
+
+    /// The outline jumps within the rendered view, and a one-heading document has nowhere to jump.
+    private var showsOutlineButton: Bool {
+        showsModePicker && !showsSource && headings.count >= 2
+    }
+
+    private var outlineButton: some View {
+        Button("Outline", systemImage: "list.bullet.indent") {
+            showsOutline = true
+        }
+        .accessibilityIdentifier("reader.outline")
+    }
+
     private var readerMenu: some View {
         Menu {
             Toggle("Obsidian extras", isOn: $obsidianEnabled)

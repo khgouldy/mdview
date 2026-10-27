@@ -11,6 +11,8 @@ import Textual
 struct RenderedView: View {
     let markdown: String
     var baseDirectory: URL?
+    /// Set by the outline sheet (V1). Each request has its own id, so jumping to the same heading twice scrolls twice.
+    var jump: OutlineJump?
 
     /// Wide enough for a reading column on iPad. Phones are narrower, so the cap does not bind.
     private static let readableWidth: CGFloat = 680
@@ -18,27 +20,37 @@ struct RenderedView: View {
     /// gap Textual would leave there in one document.
     private static let sectionSpacing: CGFloat = 24
     private static let placeholderBytes = 2048
+    /// Time for a lazy section to lay out after the first scroll, before the second one finds the heading in it.
+    private static let sectionSettleDelay = Duration.milliseconds(250)
 
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @State private var prepared: PreparedDocument?
     @State private var trace = RenderTrace()
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         let key = PreparedDocument.Key(text: markdown, obsidian: obsidianEnabled, math: false)
         // A cached document draws on the first frame, so Source → Rendered doesn't flash the placeholder. While a new
         // key prepares (the Obsidian toggle), the previous render stays up instead.
         let document = prepared.flatMap { $0.key == key ? $0 : nil } ?? DocumentPreparer.shared.cached(key) ?? prepared
-        ScrollView {
-            Group {
-                if let document {
-                    rendered(document)
-                } else {
-                    placeholder
+        ScrollViewReader { proxy in
+            ScrollView {
+                Group {
+                    if let document {
+                        rendered(document)
+                    } else {
+                        placeholder
+                    }
+                }
+                .frame(maxWidth: Self.readableWidth, alignment: .leading)
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
+            .onChange(of: jump) { _, request in
+                if let request, let document {
+                    scroll(to: request, in: document, with: proxy)
                 }
             }
-            .frame(maxWidth: Self.readableWidth, alignment: .leading)
-            .padding(16)
-            .frame(maxWidth: .infinity, alignment: .center)
         }
         .task(id: key) {
             let document = await DocumentPreparer.shared.prepare(key)
@@ -46,6 +58,31 @@ struct RenderedView: View {
                 return
             }
             prepared = document
+        }
+    }
+
+    /// A single section has every heading id realized, so one scroll to the slug is enough. In a lazy stack the
+    /// heading's id exists only once its section is realized, so go to `section-<n>` first (which realizes it), let
+    /// the layout settle, then to the slug. Duplicate slugs share one id and land on the first heading.
+    private func scroll(to request: OutlineJump, in document: PreparedDocument, with proxy: ScrollViewProxy) {
+        let heading = request.heading
+        guard document.sections.count > 1 else {
+            Motion.animate(reduceMotion: reduceMotion) {
+                proxy.scrollTo(heading.slug, anchor: .top)
+            }
+            return
+        }
+        Task { @MainActor in
+            Motion.animate(reduceMotion: reduceMotion) {
+                proxy.scrollTo("section-\(heading.section)", anchor: .top)
+            }
+            try? await Task.sleep(for: Self.sectionSettleDelay)
+            guard !Task.isCancelled else {
+                return
+            }
+            Motion.animate(reduceMotion: reduceMotion) {
+                proxy.scrollTo(heading.slug, anchor: .top)
+            }
         }
     }
 
@@ -104,6 +141,12 @@ struct RenderedView: View {
         }
         return String(head[..<newline])
     }
+}
+
+/// A request from the outline sheet to scroll to one heading.
+struct OutlineJump: Equatable {
+    let id = UUID()
+    let heading: OutlineHeading
 }
 
 /// Text selection, except while VoiceOver runs (K3). Textual's selection overlay covers the document with a view that
