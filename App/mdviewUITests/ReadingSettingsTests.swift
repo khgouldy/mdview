@@ -55,15 +55,22 @@ final class ReadingSettingsTests: XCTestCase {
         XCTAssertFalse(width.exists, app.debugDescription)
     }
 
+    /// The size row keeps the menu open (`menuActionDismissBehavior(.disabled)`), so each choice opens the menu,
+    /// taps the item and closes the menu again by tapping the title area. Whether the row shows inline or as a
+    /// "Text Size" submenu depends on the OS, so the submenu is opened only when the item isn't there yet.
     private func choose(_ identifier: String, in app: XCUIApplication) {
         let menu = app.buttons["reader.menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 10), app.debugDescription)
         menu.tap()
-        let text = app.descendants(matching: .any)["reader.text"].firstMatch
-        XCTAssertTrue(text.waitForExistence(timeout: 5), app.debugDescription)
-        text.tap()
         let item = app.descendants(matching: .any)[identifier].firstMatch
+        if !item.waitForExistence(timeout: 3) {
+            let text = app.descendants(matching: .any)["reader.text"].firstMatch
+            XCTAssertTrue(text.waitForExistence(timeout: 5), app.debugDescription)
+            text.tap()
+        }
         XCTAssertTrue(item.waitForExistence(timeout: 5), app.debugDescription)
         item.tap()
+        app.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.07)).tap()
+        XCTAssertTrue(item.waitForNonExistence(timeout: 5), "the reader menu stayed open")
     }
 }

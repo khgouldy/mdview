@@ -81,43 +81,54 @@ enum ReaderFontDesign: String, CaseIterable, Identifiable {
     }
 }
 
-/// The reader menu's reading section: a Text submenu (Smaller, Larger, Reset), a Width picker and a Font picker.
-/// The Width picker shows only in regular width (iPad full screen or a wide split): every column width is wider than a
-/// compact-width screen, so there it would change nothing. The stored width stays as it is.
+/// The reader menu's reading section: text size as one row (smaller, reset, larger), a Width picker and a Font picker.
+/// The size row keeps the menu open, so a reader can tap Larger a few times and watch the text grow. The Width picker
+/// shows only in regular width (iPad full screen or a wide split): every column width is wider than a compact-width
+/// screen, so there it would change nothing. The stored width stays as it is. Plain text shows only the size row:
+/// Source has its own monospaced face and fills the screen.
 struct ReadingSettingsMenu: View {
+    /// Width and Font apply to rendered Markdown only.
+    var showsLayout = true
+
     @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
     @AppStorage(ReadingSettings.widthKey) private var width = ReaderWidth.defaultValue.rawValue
     @AppStorage(ReadingSettings.fontDesignKey) private var fontDesign = ReaderFontDesign.system
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
-        Menu("Text", systemImage: "textformat.size") {
+        ControlGroup {
             Button("Smaller", systemImage: "textformat.size.smaller") {
                 textScale = ReadingSettings.stepped(textScale, by: -1)
             }
             .disabled(textScale <= ReadingSettings.minimumTextScale)
             .accessibilityIdentifier("reader.text.smaller")
-            Button("Larger", systemImage: "textformat.size.larger") {
-                textScale = ReadingSettings.stepped(textScale, by: 1)
-            }
-            .disabled(textScale >= ReadingSettings.maximumTextScale)
-            .accessibilityIdentifier("reader.text.larger")
             Button("Reset", systemImage: "arrow.counterclockwise") {
                 textScale = ReadingSettings.defaultTextScale
             }
             .disabled(textScale == ReadingSettings.defaultTextScale)
             .accessibilityIdentifier("reader.text.reset")
-        }
-        .accessibilityIdentifier("reader.text")
-        if horizontalSizeClass == .regular {
-            Picker("Width", selection: $width) {
-                ForEach(ReaderWidth.allCases) { Text($0.title).tag($0.rawValue) }
+            Button("Larger", systemImage: "textformat.size.larger") {
+                textScale = ReadingSettings.stepped(textScale, by: 1)
             }
-            .accessibilityIdentifier("reader.width")
+            .disabled(textScale >= ReadingSettings.maximumTextScale)
+            .accessibilityIdentifier("reader.text.larger")
+        } label: {
+            Label("Text Size", systemImage: "textformat.size")
         }
-        Picker("Font", selection: $fontDesign) {
-            ForEach(ReaderFontDesign.allCases) { Text($0.title).tag($0) }
+        .controlGroupStyle(.compactMenu)
+        .menuActionDismissBehavior(.disabled)
+        .accessibilityIdentifier("reader.text")
+        if showsLayout {
+            if horizontalSizeClass == .regular {
+                Picker("Width", selection: $width) {
+                    ForEach(ReaderWidth.allCases) { Text($0.title).tag($0.rawValue) }
+                }
+                .accessibilityIdentifier("reader.width")
+            }
+            Picker("Font", selection: $fontDesign) {
+                ForEach(ReaderFontDesign.allCases) { Text($0.title).tag($0) }
+            }
+            .accessibilityIdentifier("reader.fontDesign")
         }
-        .accessibilityIdentifier("reader.fontDesign")
     }
 }
