@@ -33,6 +33,11 @@ final class PerformanceTests: XCTestCase {
     func testOpenStaysUnderThreeTimesBudget() throws {
         let fixture = try Self.fixture20k()
         let app = ReaderLauncher.app(fixture: fixture, scheme: "light")
+        // Warm-up launch. The first launch after install also pays one-time system work (it took 9.4 s in CI run
+        // 40504894387, while the five measured launches in testOpenTypicalNote averaged 2.3 s plus a 0.9 s open).
+        app.launch()
+        XCTAssertTrue(app.descendants(matching: .any)["reader.rendered"].firstMatch.waitForExistence(timeout: 30))
+        app.terminate()
         let start = ContinuousClock.now
         app.launch()
         XCTAssertTrue(app.descendants(matching: .any)["reader.rendered"].firstMatch.waitForExistence(timeout: 15))

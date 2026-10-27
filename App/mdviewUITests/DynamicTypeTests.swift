@@ -28,25 +28,41 @@ final class DynamicTypeTests: XCTestCase {
         let owner = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Owner"))
             .firstMatch
         XCTAssertTrue(owner.waitForExistence(timeout: 20), app.debugDescription)
-        // The header sits off screen to the right until the table is swiped. `app.swipeLeft()` drags across the middle
-        // of the screen, which at this size is body text, not the table, so first bring the header row near the middle
-        // and then drag sideways along that row, where the table's horizontal scroll view is.
+        // At this size the table starts about two screens down and its last header sits off screen to the right.
+        // First scroll the reader with slow drags (no momentum) until the header row is near the middle, then drag
+        // sideways along that row, where the table's horizontal scroll view is. `app.swipeLeft()` drags across the
+        // middle of the screen, which is body text, and a drag at an off-screen y does nothing.
         let window = app.windows.firstMatch
         let origin = window.coordinate(withNormalizedOffset: .zero)
+        let height = window.frame.height
         let middleX = window.frame.width / 2
-        if abs(owner.frame.midY - window.frame.height * 0.45) > window.frame.height * 0.2 {
-            origin.withOffset(CGVector(dx: middleX, dy: owner.frame.midY))
+        func drag(fromY: CGFloat, toY: CGFloat) {
+            origin.withOffset(CGVector(dx: middleX, dy: fromY))
                 .press(
-                    forDuration: 0.1,
-                    thenDragTo: origin.withOffset(CGVector(dx: middleX, dy: window.frame.height * 0.45)),
+                    forDuration: 0.05,
+                    thenDragTo: origin.withOffset(CGVector(dx: middleX, dy: toY)),
+                    withVelocity: .slow,
+                    thenHoldForDuration: 0.1,
                 )
+        }
+        for _ in 0 ..< 12 {
+            let midY = owner.frame.midY
+            if midY > height * 0.65 {
+                drag(fromY: height * 0.75, toY: height * 0.75 - min(midY - height * 0.45, height * 0.45))
+            } else if midY < height * 0.3 {
+                drag(fromY: height * 0.3, toY: height * 0.3 + min(height * 0.45 - midY, height * 0.4))
+            } else {
+                break
+            }
         }
         for _ in 0 ..< 6 where !owner.isHittable {
             let rowY = owner.frame.midY
             origin.withOffset(CGVector(dx: window.frame.width * 0.85, dy: rowY))
                 .press(
-                    forDuration: 0.1,
+                    forDuration: 0.05,
                     thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.15, dy: rowY)),
+                    withVelocity: .slow,
+                    thenHoldForDuration: 0.1,
                 )
         }
         XCTAssertTrue(

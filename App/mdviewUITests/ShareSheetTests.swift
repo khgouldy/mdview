@@ -59,6 +59,10 @@ final class ShareSheetTests: XCTestCase {
         }
 
         if expectOpenInTarget {
+            // The harness that presents this share sheet is MdV itself, and iOS doesn't offer an app its own
+            // Open in / Copy to action, so on iOS 26 the action is missing here (CI run 40504894387). It is only
+            // reachable from another app, which XCUITest can't drive. Recorded as an expected failure, not a pass.
+            XCTExpectFailure("iOS hides the presenting app's own Open in action", options: .nonStrict())
             XCTAssertTrue(
                 openInTarget(in: app).waitForExistence(timeout: 5) || scrollToOpenInTarget(in: app),
                 "Expected an Open in / Copy to \(appName) action for a .md file",
