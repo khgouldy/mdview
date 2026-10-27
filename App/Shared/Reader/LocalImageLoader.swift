@@ -14,6 +14,12 @@ struct LocalImageLoader: AttachmentLoader {
         text: String,
         environment _: ColorEnvironmentValues,
     ) async throws -> AnyAttachment {
+        try attachment(for: url, text: text)
+    }
+
+    /// The same load without Textual's color environment, which only Textual can create. The PDF exporter (V5) calls
+    /// this to resolve images before rendering, since an `ImageRenderer` host may never run Textual's loading task.
+    func attachment(for url: URL, text: String) throws -> AnyAttachment {
         if let marker = TaskMarker(url: url) {
             return AnyAttachment(TaskCheckbox(marker: marker) as any Textual.Attachment)
         }

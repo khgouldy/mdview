@@ -21,6 +21,7 @@ struct ReaderView: View {
     @State private var headings: [OutlineHeading] = []
     @State private var showsOutline = false
     @State private var outlineJump: OutlineJump?
+    @State private var pdfExport = PDFExport()
 
     /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
     private static let findDebounce = Duration.milliseconds(150)
@@ -72,6 +73,11 @@ struct ReaderView: View {
                 }
             }
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
+            .overlay {
+                if pdfExport.isRendering {
+                    ExportProgressView()
+                }
+            }
             .sheet(isPresented: $showsHelp) {
                 OpenFilesHelpView()
             }
@@ -371,6 +377,12 @@ extension ReaderView {
             Toggle("Obsidian extras", isOn: $obsidianEnabled)
                 .accessibilityIdentifier("settings.obsidian")
             ReadingSettingsMenu()
+            ExportMenu(
+                markdown: document.text,
+                baseDirectory: resolvedFileURL?.deletingLastPathComponent(),
+                fileName: fileName,
+                export: pdfExport,
+            )
             Button("How to Open Files", systemImage: "questionmark.circle") {
                 showsHelp = true
             }
