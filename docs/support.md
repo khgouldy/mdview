@@ -19,11 +19,27 @@ MdV is a private Markdown viewer for iPhone and iPad (iOS 18 and later). Open a 
 Launch MdV and pick a file in the document browser, which shows the same locations as the Files app (On My iPhone or iPad, iCloud Drive, and any file providers you have enabled). You can also:
 
 - In the Files app, tap a Markdown file, or long-press it and choose Share, then MdV.
-- From another app, use Share or Open In and choose MdV.
+- From another app, use Share and choose MdV to read it in place, or Open In to open it in the full app.
 - On iPad, drag a Markdown file onto MdV.
+- Copy Markdown text and tap Paste on the launch screen.
 - Reopen a file from Recents in the document browser.
 
 MdV reads the file where it is. It does not make a copy.
+
+### Open a Markdown file someone sent me in a chat app
+
+Try these in order:
+
+1. **Share, then tap MdV.** In the chat app, tap Share on the message or file and choose MdV in the app row. MdV shows it right there, rendered, with a Source switch and no app change. The first time, MdV may sit under More: tap More, then Edit, and add MdV to Favorites. After that it is one tap. Tap Done to close.
+2. **Share a file, then choose MdV as the Open In target.** If the chat app shares a file with a Markdown or text extension, MdV can open it in the full app.
+3. **Copy and paste.** Copy the text, open MdV, and tap Paste on the launch screen. MdV shows it as a document. Use Save to Files to keep it.
+4. **Save to Files, then open it in MdV.** Choose Save to Files in the chat app's share sheet, then open the saved file from MdV's document browser.
+
+MdV's How to Open Files guide on the launch screen (and in the reader menu) explains the same steps.
+
+### Why does the share sheet say Text Document?
+
+Some chat apps share a message as plain text with no file name, so iOS can only label it "Text Document". It is still your Markdown. Tap MdV in the share sheet and it opens as Shared Text, rendered as Markdown. If MdV is not offered, tap More and add it to Favorites. If it still does not appear, email [support@par72.us](mailto:support@par72.us) with the app you shared from.
 
 ### What does the Obsidian extras toggle do?
 

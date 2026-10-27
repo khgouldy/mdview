@@ -2,7 +2,7 @@
 
 Everything App Store Connect asks for that doesn't need the Apple login. Character counts were measured with Python `len()` on the exact text below. App Store Connect counts characters, not bytes.
 
-Bundle ID `us.par72.mdview`, version 0.1.0 (build 1), SKU `mdview`. iPhone and iPad, iOS 18.0 or later.
+Bundle ID `us.par72.mdview`, version 0.1.0 (build 2), SKU `mdview`. iPhone and iPad, iOS 18.0 or later.
 
 ## App name
 
@@ -42,7 +42,12 @@ Read Markdown files on iPhone and iPad, rendered or as source. Everything stays 
 ```text
 MdV opens a Markdown file and shows it. That's the whole app.
 
-Pick a .md file in the Files app, from another app's share sheet, or from Recents, and MdV renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
+Pick a .md file in the Files app or from Recents, and MdV renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
+
+READ ANYTHING SHARED TO YOU
+• Share any Markdown or text to MdV from any app's share sheet and read it instantly. It opens right there, with no app switch.
+• Paste Markdown: copy text from a chat or an email, open MdV, and tap Paste. Save it to Files if you want to keep it.
+• A built-in guide, How to Open Files, shows every way to get a file into MdV.
 
 PRIVATE BY DESIGN
 • No network access. MdV never connects to the internet.
@@ -55,7 +60,7 @@ FEATURES
 • Rendered and Source views, with your choice remembered.
 • Find in document: matches are highlighted with a running "2 of 7" count.
 • Obsidian extras: hides YAML front matter and shows [[wikilinks]] as plain text. Turn it off in the menu to see them as written.
-• Follows Dark Mode and Dynamic Type.
+• Follows Dark Mode and Dynamic Type, and works with VoiceOver.
 • iPhone and iPad, including drag and drop on iPad.
 
 WHAT IT ISN'T
@@ -64,7 +69,7 @@ MdV is a viewer, not an editor. It doesn't sync, and it doesn't manage a library
 MdV is open source under the MIT license: github.com/khgouldy/mdview
 ```
 
-1470/4000
+1818/4000
 
 ## Keywords
 
@@ -144,12 +149,14 @@ Does the app contain, show, or access third-party content? No. It shows only fil
 - Sign-in required: **No.** There is no account or login.
 - Contact email: support@par72.us
 - Contact name and phone: fill in App Store Connect.
-- Notes:
+- Notes (1219/4000 characters):
 
 ```text
 MdV is a local Markdown viewer. No login, account, or network access is needed.
 
-To test: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has one setting, Obsidian extras, which hides YAML front matter and shows [[wikilinks]] as plain text.
+The app includes a Share extension (MdV in the share sheet). It shows the one text or Markdown item you share, in the share sheet itself. It reads only that item, keeps nothing, and never leaves the device or opens the network. To test it: in Notes or Messages, select some Markdown text, tap Share, and choose MdV (under More the first time). It renders; Done closes it. The launch screen also has Paste, which shows the clipboard as a document, and How to Open Files, a guide.
+
+To test the main app: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has one setting, Obsidian extras, which hides YAML front matter and shows [[wikilinks]] as plain text.
 
 The app never uses the network. Web images in a document are shown as a link that opens Safari only when tapped. The app collects no data.
 ```
@@ -162,3 +169,5 @@ Taken on the simulator with `scripts/screenshots.sh`. See `docs/app-store/screen
 - iPad 13" display (iPad Pro 13-inch (M4), 2064 x 2752): `screenshots/ipad-13/`
 
 Upload order: rendered light, rendered dark, source, find, Obsidian.
+
+If L10 finds drag and drop broken, remove the iPad drag-and-drop bullet from the description and recount.

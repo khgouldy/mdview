@@ -1,6 +1,6 @@
 # Release
 
-Version 0.1.0, build 1 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
+Version 0.1.0, build 2 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
 
 Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Local.xcconfig`. Do not commit it, and do not put an Apple ID or Team ID in the repo.
 
@@ -40,3 +40,18 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 - [ ] Obsidian extras (reader menu) is on: a leading YAML front matter block is hidden, and `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` show as plain text. Turn it off and those are rendered as written. Source still shows the original file either way.
 - [ ] Find: type a query, matches are highlighted in the source, the count reads `n of N` (or `No matches`). Submit moves to the next match and wraps. Clear the query and the previous Rendered or Source choice returns.
 - [ ] A remote image (`![alt](https://…)`) is a link, not an inline image. Tap it and Safari opens. The app does not show the image bytes.
+- [ ] Grok Bot: share a message, tap MdV. It renders (the "Text Document" case). Repeat from Messages, Mail and Files.
+- [ ] In the share reader, the info button opens the What was shared panel with the registered types, name and byte count. Copy puts them on the pasteboard.
+- [ ] If MdV is missing from the share sheet, install a Debug build from Xcode, share again, and read the types in the What was shared panel. Debug also accepts `public.data`, so it is offered for anything.
+- [ ] Speed budgets: measure the scenarios in `docs/perf/README.md` (cold and warm open, share extension time and memory, 200 KB, 1 MB, Find on 1 MB) on an iPhone 15 Pro or newer Release build, and fill the Device results table with the median of 5.
+- [ ] The icon in light, dark and tinted: Home Screen, then Customize.
+- [ ] The Home Screen name reads `MdV`; the App Store name is `MdV: Markdown Viewer`.
+- [ ] VoiceOver: the rotor's Headings steps through a document, a table reads by row and column, and list items read as one element with no "circle".
+- [ ] Differentiate Without Color: the current Find match is marked by more than color.
+- [ ] Largest accessibility text size: wide tables scroll sideways and nothing is truncated.
+- [ ] Reduce Motion and Increased Contrast: no animated transitions, and the accent color stays readable.
+- [ ] Task lists render as read-only checkboxes, with "Done" and "Not done" read by VoiceOver.
+- [ ] Paste: copy Markdown, tap Paste on the launch screen, read it, then Save to Files. Cancel shows nothing.
+- [ ] How to Open Files guide: opens from the launch screen and the reader menu; Done closes it.
+- [ ] iPad: drag and drop a Markdown file, and open a document in Stage Manager. If drag and drop fails, remove the iPad guide section and the listing bullet.
+- [ ] iOS 27: the Paste and How to Open Files buttons still show on the launch screen. If not, move them into `overlayAccessoryView` (see `mdviewApp.swift`).

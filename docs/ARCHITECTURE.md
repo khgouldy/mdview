@@ -10,6 +10,10 @@ MdV is a read-only SwiftUI document app; the repo, target and module are named `
 
 The scene shows `ReaderView` with the document's text. The navigation title is the file name.
 
+## Launch screen and Paste
+
+`DocumentGroupLaunchScene(AppName.display)` adds two actions: `PasteMarkdownButton` (the system `PasteButton`, so no paste alert; Save to Files writes UTF-8 and `TextDocument` stays read-only) and `OpenFilesHelpButton` (the How to Open Files guide, also `reader.help` in the reader menu). Task lists (`- [ ]`, `- [x]`) become a read-only `TaskCheckbox` attachment through `LocalImageLoader`. The build number is `CURRENT_PROJECT_VERSION` in `project.yml`, shared by both targets.
+
 ## Reader
 
 `ReaderView` keeps two `@AppStorage` values, both local to the app:

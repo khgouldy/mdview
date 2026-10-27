@@ -25,6 +25,10 @@ MdV reads the Markdown and text files you choose to open, through the iOS docume
 
 MdV does not connect to the internet. It contains no networking code and no analytics, advertising, or crash-reporting SDKs. The only third-party code is open-source Markdown rendering libraries that run on the device.
 
+## Share extension and Paste
+
+MdV includes a Share extension, so you can choose MdV in any app's share sheet. It reads only the one item you share, shows it on screen, and keeps nothing: no copy, no history, no upload. When you tap Done it is gone. If you use Paste Markdown, the pasted text stays in memory while it is on screen and is discarded when you close it, unless you choose Save to Files, which writes the file where you pick. MdV reads the clipboard only when you tap Paste.
+
 ## Settings stored on your device
 
 MdV stores two preferences in the app's on-device settings:
