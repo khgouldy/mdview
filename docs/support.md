@@ -45,6 +45,30 @@ Some chat apps share a message as plain text with no file name, so iOS can only 
 
 Open the menu (the ellipsis button in the top right of a document) and switch Obsidian extras on or off. It is on by default. When it is on, MdV hides a YAML front matter block at the top of the file and shows wikilinks such as `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. When it is off, those are shown exactly as written. The setting does not change your file.
 
+### How do I jump to a heading?
+
+In a rendered Markdown document with two or more headings, tap Outline in the toolbar, then tap a heading. On iPad with a keyboard, press ⇧⌘O.
+
+### Does MdV remember where I stopped reading?
+
+Yes. When you reopen a file, MdV scrolls back to where you left it. It keeps this for your 200 most recent files, stores only a position and a hash of the file's path (never a name or content), and keeps it on your device. Deleting the app removes it. Pasted text and items from the Share extension are not remembered.
+
+### How do I change the text size, width or font?
+
+Open the menu (the ellipsis button) and use the reading settings: text size, column width (Narrow, Standard, Wide), and font (System, Serif, Mono). They apply on top of your system text size.
+
+### How do I copy a code block?
+
+Tap the copy button on the code block. The code goes to your clipboard.
+
+### How do I save a PDF or print?
+
+Open the menu and choose Export PDF or Print. The PDF is built on your device and handed to the share sheet, so you choose where it goes. Documents over 1 MB are too long to export.
+
+### What is Math (LaTeX)?
+
+Math is off by default, so text like `$5 and $10` stays as written. Switch Math (LaTeX) on in the menu and `$…$`, `$$…$$`, `\(…\)` and `\[…\]` draw as formulas. Math is drawn on your device with no network. Very large sections (over 64 KB) show the formula source.
+
 ### What is Source view?
 
 Use the Rendered / Source control at the bottom of the screen. Source shows the file exactly as stored, in a monospaced font you can select and copy. MdV remembers your choice for the next document. Plain text files always open in Source.

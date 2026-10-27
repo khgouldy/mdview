@@ -15,6 +15,11 @@ struct ReaderFixture {
         try screenshotSample(named: "Weekly Review.md", key: "MDVIEW_SAMPLE_REVIEW")
     }
 
+    /// Needs `MDVIEW_SAMPLE_CHECKLIST`, which `scripts/screenshots.sh` injects.
+    static func launchChecklist() throws -> ReaderFixture {
+        try screenshotSample(named: "Launch Checklist.md", key: "MDVIEW_SAMPLE_CHECKLIST")
+    }
+
     /// Every block type the reader renders, under a long file name for title truncation checks.
     static let kitchenSink = ReaderFixture(
         name: "A very long file name for accessibility checks.md",

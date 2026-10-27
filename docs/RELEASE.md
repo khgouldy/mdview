@@ -1,6 +1,6 @@
 # Release
 
-Version 0.1.0, build 2 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
+Version 0.2.0, build 3 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
 
 Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Local.xcconfig`. Do not commit it, and do not put an Apple ID or Team ID in the repo.
 
@@ -25,7 +25,7 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 
 Export compliance: `Info.plist` sets `ITSAppUsesNonExemptEncryption` to `NO` (the app uses no encryption), so App Store Connect does not ask the encryption questions for each build.
 
-Privacy answers for the product page: the app does not track, does not collect data, and does not use the network. The manifest is `App/mdview/PrivacyInfo.xcprivacy` (`NSPrivacyTracking` false, empty tracking domains, empty collected-data types, UserDefaults reason `CA92.1`).
+Privacy answers for the product page: the app does not track, does not collect data, and does not use the network. The manifest is `App/mdview/PrivacyInfo.xcprivacy` (`NSPrivacyTracking` false, empty tracking domains, empty collected-data types, UserDefaults reason `CA92.1`). On-device settings are `reader.mode`, `obsidian.enabled`, `reader.math`, `reader.textScale`, `reader.width`, `reader.fontDesign` and `reader.positions`; the privacy policy lists every one.
 
 ## On-device checklist
 
@@ -55,3 +55,18 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 - [ ] How to Open Files guide: opens from the launch screen and the reader menu; Done closes it.
 - [ ] iPad: drag and drop a Markdown file, and open a document in Stage Manager. If drag and drop fails, remove the iPad guide section and the listing bullet.
 - [ ] iOS 27: the Paste and How to Open Files buttons still show on the launch screen. If not, move them into `overlayAccessoryView` (see `mdviewApp.swift`).
+
+## v0.2 checks
+
+Run these on a device after the checklist above.
+
+- [ ] Outline: open a document with several headings, tap Outline, tap a heading, and the document scrolls to it. A one-heading document and Source show no Outline button. A duplicate heading lands on the first one.
+- [ ] Copy: tap the copy button on a code block, paste elsewhere, and the code matches. VoiceOver reads the button as copy.
+- [ ] Settings: change text size, width and font in the menu. Rendered and Source both follow, they survive a relaunch, and Reset returns to normal.
+- [ ] Position: scroll halfway, close the file, reopen it from Recents, and it returns near the same spot. A pasted note and a shared item start at the top.
+- [ ] PDF: Export PDF on a short and a long document. Pages are Letter or A4 with no cut-off lines. A file over 1 MB says "Too long to export".
+- [ ] Print: Print shows the system print dialog with the rendered document.
+- [ ] Math: off by default, so `$5 and $10` stays plain. Switch Math (LaTeX) on and `$x^2$` and `\(x^2\)` draw as formulas. Code spans stay literal.
+- [ ] Shortcuts (iPad, hardware keyboard): ⌘1, ⌘2, ⇧⌘O, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E work in a document and are disabled on the launch screen.
+- [ ] Screenshots: run `scripts/screenshots.sh` on a Mac, check that `06-outline.png` and `07-tasks.png` exist in both folders, and upload all seven in order.
+- [ ] Version: Settings, About or the App Store build shows 0.2.0 (3) for the app and the Share extension.

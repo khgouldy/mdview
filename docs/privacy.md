@@ -5,7 +5,7 @@ permalink: /privacy/
 
 # MdV Privacy Policy
 
-Effective date: October 26, 2026
+Effective date: October 27, 2026
 
 MdV is a Markdown viewer for iPhone and iPad, published by Kevin Gould / Par72 Labs, LLC. This policy covers the MdV app (bundle ID `us.par72.mdview`).
 
@@ -42,6 +42,10 @@ MdV stores these preferences in the app's on-device settings:
 - where you stopped reading (`reader.positions`): for the 200 most recently opened files, one scroll position (a number from 0 to 1) is kept so a file reopens where you left it. Each file is identified only by a SHA-256 hash of its path, so no file name or content is stored. Pasted text and items from the Share extension have no file, so nothing is kept for them. Deleting the app removes these positions.
 
 iOS also keeps its own list of recently opened documents for the document browser. These stay on your device and are removed when you delete the app (the Recents list is managed by iOS).
+
+## Copy, PDF and print
+
+The copy button on a code block writes that code to the clipboard only when you tap it. Export PDF and Print build the PDF on your device and hand it to the iOS share sheet or print dialog. MdV does not send it anywhere, and nothing is kept after you finish.
 
 ## Tracking
 

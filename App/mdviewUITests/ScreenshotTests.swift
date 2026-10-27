@@ -35,6 +35,13 @@ final class ScreenshotTests: XCTestCase {
         let review = try ReaderLauncher.app(fixture: ReaderFixture.weeklyReview(), scheme: "light")
         review.launch()
         try session.captureObsidian(review)
+        let checklist = try ReaderFixture.launchChecklist()
+        let outline = ReaderLauncher.app(fixture: checklist, scheme: "light")
+        outline.launch()
+        try session.captureOutline(outline)
+        let tasks = ReaderLauncher.app(fixture: checklist, scheme: "light")
+        tasks.launch()
+        try session.captureTasks(tasks)
     }
 }
 
@@ -95,6 +102,29 @@ private struct ScreenshotSession {
         try selectMode("Rendered", in: app)
         dismissSystemBanner(app)
         capture("05-obsidian.png")
+    }
+
+    func captureOutline(_ app: XCUIApplication) throws {
+        XCUIDevice.shared.orientation = .portrait
+        try requireReader(app, title: "Launch Checklist.md")
+        try selectMode("Rendered", in: app)
+        let button = app.buttons["reader.outline"]
+        XCTAssertTrue(button.waitForExistence(timeout: 8), app.debugDescription)
+        button.tap()
+        XCTAssertTrue(
+            app.descendants(matching: .any)["outline.sheet"].waitForExistence(timeout: 8),
+            app.debugDescription,
+        )
+        dismissSystemBanner(app)
+        capture("06-outline.png")
+    }
+
+    func captureTasks(_ app: XCUIApplication) throws {
+        XCUIDevice.shared.orientation = .portrait
+        try requireReader(app, title: "Launch Checklist.md")
+        try selectMode("Rendered", in: app)
+        dismissSystemBanner(app)
+        capture("07-tasks.png")
     }
 
     private func requireReader(_ app: XCUIApplication, title: String) throws {

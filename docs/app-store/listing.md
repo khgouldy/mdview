@@ -2,7 +2,7 @@
 
 Everything App Store Connect asks for that doesn't need the Apple login. Character counts were measured with Python `len()` on the exact text below. App Store Connect counts characters, not bytes.
 
-Bundle ID `us.par72.mdview`, version 0.1.0 (build 2), SKU `mdview`. iPhone and iPad, iOS 18.0 or later.
+Bundle ID `us.par72.mdview`, version 0.2.0 (build 3), SKU `mdview`. iPhone and iPad, iOS 18.0 or later.
 
 ## App name
 
@@ -49,6 +49,16 @@ READ ANYTHING SHARED TO YOU
 • Paste Markdown: copy text from a chat or an email, open MdV, and tap Paste. Save it to Files if you want to keep it.
 • A built-in guide, How to Open Files, shows every way to get a file into MdV.
 
+MADE FOR LONG READS
+• Outline: tap Outline to see every heading and jump straight to it.
+• Picks up where you left off: a file reopens at the spot you stopped reading.
+• Reading settings: text size, column width, and a System, Serif, or Mono font.
+• Copy any code block with one tap.
+• Task lists show as read-only checkboxes.
+• Export a document as a PDF, or print it.
+• Math (LaTeX) is optional and off by default, so dollar amounts stay plain text.
+• Keyboard shortcuts on iPad: rendered and source, outline, text size, print, and export.
+
 PRIVATE BY DESIGN
 • No network access. MdV never connects to the internet.
 • No account, no sign-in, no analytics, no ads, no tracking.
@@ -69,7 +79,26 @@ MdV is a viewer, not an editor. It doesn't sync, and it doesn't manage a library
 MdV is open source under the MIT license: github.com/khgouldy/mdview
 ```
 
-1818/4000
+2361/4000
+
+## What's New in 0.2.0
+
+```text
+• Outline: jump to any heading in a long document.
+• MdV reopens a file where you stopped reading.
+• Reading settings for text size, column width, and font.
+• Copy button on code blocks.
+• Export to PDF and print.
+• Optional Math (LaTeX), off by default.
+• iPad keyboard shortcuts in the View menu.
+• Task lists show as checkboxes.
+• Share Markdown from any app and read it in place.
+• Paste Markdown from the launch screen.
+• Better VoiceOver, Reduce Motion, and larger text support.
+• Faster opening of large files.
+```
+
+517/4000
 
 ## Keywords
 
@@ -123,7 +152,7 @@ Expected rating: 4+ (the lowest band). Note for the reviewer and for the "user-g
 
 - Data collection: **No, we do not collect data from this app.**
 - Resulting label: **Data Not Collected**
-- Tracking: none. `App/mdview/PrivacyInfo.xcprivacy` sets `NSPrivacyTracking` false, no tracking domains, no collected data types, and the UserDefaults required-reason API with reason `CA92.1` (two on-device settings: `reader.mode` and `obsidian.enabled`).
+- Tracking: none. `App/mdview/PrivacyInfo.xcprivacy` sets `NSPrivacyTracking` false, no tracking domains, no collected data types, and the UserDefaults required-reason API with reason `CA92.1` (on-device settings only: `reader.mode`, `obsidian.enabled`, `reader.math`, `reader.textScale`, `reader.width`, `reader.fontDesign` and `reader.positions`).
 
 ## Export compliance
 
@@ -149,14 +178,14 @@ Does the app contain, show, or access third-party content? No. It shows only fil
 - Sign-in required: **No.** There is no account or login.
 - Contact email: support@par72.us
 - Contact name and phone: fill in App Store Connect.
-- Notes (1219/4000 characters):
+- Notes (1344/4000 characters):
 
 ```text
 MdV is a local Markdown viewer. No login, account, or network access is needed.
 
 The app includes a Share extension (MdV in the share sheet). It shows the one text or Markdown item you share, in the share sheet itself. It reads only that item, keeps nothing, and never leaves the device or opens the network. To test it: in Notes or Messages, select some Markdown text, tap Share, and choose MdV (under More the first time). It renders; Done closes it. The launch screen also has Paste, which shows the clipboard as a document, and How to Open Files, a guide.
 
-To test the main app: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has one setting, Obsidian extras, which hides YAML front matter and shows [[wikilinks]] as plain text.
+To test the main app: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has the Obsidian extras and Math (LaTeX) switches, reading settings (text size, width, font), Export PDF and Print, and How to Open Files. In a document with two or more headings, the Outline button lists them and jumps to one.
 
 The app never uses the network. Web images in a document are shown as a link that opens Safari only when tapped. The app collects no data.
 ```
@@ -168,6 +197,6 @@ Taken on the simulator with `scripts/screenshots.sh`. See `docs/app-store/screen
 - iPhone 6.9" display (iPhone 16 Pro Max, 1320 x 2868): `screenshots/iphone-6.9/`
 - iPad 13" display (iPad Pro 13-inch (M4), 2064 x 2752): `screenshots/ipad-13/`
 
-Upload order: rendered light, rendered dark, source, find, Obsidian.
+Upload order: rendered light, rendered dark, source, find, Obsidian, outline, tasks (`01` to `07`). `06-outline.png` and `07-tasks.png` use the `Launch Checklist.md` sample in `scripts/screenshot-samples/`. The script has not been run for 0.2.0, so capture and add them before submitting.
 
 If L10 finds drag and drop broken, remove the iPad drag-and-drop bullet from the description and recount.

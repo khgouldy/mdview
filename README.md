@@ -4,7 +4,7 @@
 
 MdV is an iOS app that opens a Markdown file and shows it. Nothing leaves the phone. There is no account, no sync, and no image download. One control switches Rendered and Source.
 
-Version 0.1.0 (build 2). iOS 18 and later, iPhone and iPad.
+Version 0.2.0 (build 3). iOS 18 and later, iPhone and iPad.
 
 ## Features
 
@@ -18,6 +18,8 @@ Version 0.1.0 (build 2). iOS 18 and later, iPhone and iPad.
 - The reader menu also sets text size (Text: Smaller, Larger, Reset; 0.85 to 1.6 times, on top of Dynamic Type), column width (Narrow 560, Standard 680, Wide 860 points) and font (System, Serif, Mono). Source follows the text size.
 - Obsidian extras are on by default. They hide a leading YAML front matter block and show `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. The reader menu has a switch for Obsidian extras. Source always shows the original file.
 - Math is off by default, because `$5 and $10` would otherwise draw as a formula. The reader menu has a Math (LaTeX) switch. When it is on, `$…$` and `$$…$$` render as math, and LaTeX's `\(…\)` and `\[…\]` are read the same way outside code. Math is drawn on the device with no network.
+- The Outline button (rendered Markdown with two or more headings) lists the headings and jumps to one. A file reopens at the spot where you stopped reading. Code blocks have a copy button.
+- The reader menu exports the rendered document as a PDF or prints it. On iPad, the View menu has keyboard shortcuts: ⌘1 Rendered, ⌘2 Source, ⇧⌘O Outline, ⌘+ ⌘− ⌘0 text size, ⌘P Print, ⇧⌘E Export PDF.
 - Find highlights matches in the source, shows `n of N` (or `No matches`), and moves to the next match when you submit. Clearing the query returns to Rendered or Source, whichever was already selected.
 
 ## Speed and layout
@@ -28,7 +30,7 @@ Opening is fast by design: parsing runs off the main actor, a placeholder draws 
 
 The app does not use the network. `URLSession`, `NWConnection`, `WKWebView`, and `CFNetwork` are lint errors under `App/` and `Packages/`.
 
-The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Preferences stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`), the Obsidian switch (`obsidian.enabled`), the Math switch (`reader.math`), and the reading settings `reader.textScale`, `reader.width` and `reader.fontDesign`. The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
+The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Preferences stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`), the Obsidian switch (`obsidian.enabled`), the Math switch (`reader.math`), the reading settings `reader.textScale`, `reader.width` and `reader.fontDesign`, and the reading positions (`reader.positions`: a scroll fraction for each of the last 200 files, keyed by a hash of the path). The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
 
 ## Build
 

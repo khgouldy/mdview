@@ -1,6 +1,6 @@
 # Architecture
 
-MdV is a read-only SwiftUI document app; the repo, target and module are named `mdview`. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Product code is the app target, the `mdviewShare` Share extension, and `Packages/MDCore`.
+MdV is a read-only SwiftUI document app; the repo, target and module are named `mdview`. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Version 0.2.0 (build 3). Product code is the app target, the `mdviewShare` Share extension, and `Packages/MDCore`.
 
 ## Opening a file
 
@@ -28,6 +28,16 @@ A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces 
 Matches live in `@State`. A `.task(id:)` keyed on the query and the text waits 150 ms after the last keystroke, runs `TextSearch.ranges` in a detached task (signpost `find`), and stores the result; a newer keystroke cancels the wait. Clearing the query clears the matches at once. The count row appears once the first search for a query finishes; until the next search lands it shows the previous result.
 
 Markdown over 2 MB (`PreparedDocument.largeBytes`, the same limit as `SharedContent.sourceOnlyAboveBytes`) opens in Source under a bar, "Large file. Showing Source." (`reader.largeFile`), with a Render Anyway button (`reader.renderAnyway`). The choice is `@State` for that document; the picker toggles it too, and neither writes `reader.mode`.
+
+## Reader features (0.2)
+
+- **Outline.** `HeadingOutline` (MDCore) finds headings with the same pipeline and sections the reader uses. `OutlineSheet` (`outline.sheet`, rows `outline.row.N`) lists them from the `reader.outline` toolbar button, shown only for rendered Markdown with two or more headings, and the reader scrolls to the heading's slug. ⇧⌘O opens it.
+- **Copy code.** `CopyableCodeBlockStyle` adds a copy button (`code.copy`) to each code block. It writes only to the pasteboard.
+- **Reading settings.** `ReadingSettings` holds `reader.textScale` (0.85 to 1.6), `reader.width` (560, 680 or 860 pt) and `reader.fontDesign`. They sit on top of Dynamic Type and apply to Rendered, Source and PDF export. ⌘+, ⌘− and ⌘0 step the scale.
+- **Reading position.** `ReadingPositionStore` (MDCore) keeps one scroll fraction (0 to 1) for each of the 200 most recent files, in `reader.positions`. Files are keyed by a SHA-256 hash of the path. Positions under 0.02 are not stored, and pasted or shared text has no file, so nothing is kept for it.
+- **PDF and print.** `ExportMenu` and `PDFExporter` (`App/mdview/Export`) draw the rendered document page by page with `PageSlicer`, on Letter or A4 by region, and hand it to the share sheet or `UIPrintInteractionController`. Documents over 1 MB show "Too long to export". Nothing leaves the device unless the user shares the PDF.
+- **Math.** `reader.math`, off by default. `MathDelimiters` (MDCore) normalizes `\(…\)` and `\[…\]` for Textual's math extension, outside code. Math sections over 64 KB render without math.
+- **Shortcuts.** `ReaderCommands` adds the View menu: ⌘1, ⌘2, ⇧⌘O, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E. They are disabled on the launch screen.
 
 ## Source layout
 
@@ -129,6 +139,10 @@ Foundation only. No package dependencies. iOS 18 and macOS 15, so `swift test` r
 | `MarkdownFileTypes` | Markdown and plain-text extensions, `isMarkdown(pathExtension:)` |
 | `RenderPipeline` | `prepare(_:obsidian:math:)`, the one entry point for rendered text |
 | `SectionSplitter` | `sections(_:minimumBytes:)` cuts over 64 KB at top-level ATX headings outside code and HTML blocks (exact rejoin, CRLF-safe); `grouped(_:targetBytes:)`; `linkDefinitions(in:)` and `parseInput(for:definitions:)` carry reference definitions across cuts. The line scanner is `MarkdownBlockScanner.swift` |
+| `HeadingOutline` | `OutlineHeading` list for the outline sheet, with slug, occurrence and section |
+| `ReadingPositionStore` | Per-file scroll fraction, 200 files, over `KeyValueStorage` |
+| `MathDelimiters` | Rewrites LaTeX `\(…\)` and `\[…\]` for the math extension, outside code, in linear time |
+| `PageSlicer` | Cuts a tall rendered document into PDF pages |
 | `SharedItemSelection` | Ranks a share request's attachments and types (`SharedCandidate` in, `SharedSelection` out); conformance is a closure, with a built-in table for common system types |
 | `SharedContent` | Share limits (5 MB, Source above 2 MB), binary sniff, title, Markdown decision, `SharedContentError` messages |
 

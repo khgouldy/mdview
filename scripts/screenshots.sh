@@ -161,6 +161,7 @@ values = {
     "MDVIEW_DEVICE_ROOT": device_root(udid),
     "MDVIEW_SAMPLE_CEDAR": sample_text("Cedar Trail.md"),
     "MDVIEW_SAMPLE_REVIEW": sample_text("Weekly Review.md"),
+    "MDVIEW_SAMPLE_CHECKLIST": sample_text("Launch Checklist.md"),
 }
 
 def inject(node):
@@ -243,6 +244,8 @@ wanted = [
     "03-source.png",
     "04-find.png",
     "05-obsidian.png",
+    "06-outline.png",
+    "07-tasks.png",
 ]
 with open(os.path.join(stage, "manifest.json"), encoding="utf-8") as handle:
     manifest = json.load(handle)
@@ -289,7 +292,7 @@ PY
 verify_shots() {
   kind="$1"
   dir="$2"
-  names="01-rendered-light.png 02-rendered-dark.png 03-source.png 04-find.png 05-obsidian.png"
+  names="01-rendered-light.png 02-rendered-dark.png 03-source.png 04-find.png 05-obsidian.png 06-outline.png 07-tasks.png"
   for name in $names; do
     file="$dir/$name"
     if [ ! -f "$file" ]; then
