@@ -25,6 +25,7 @@ struct RenderedView: View {
     private static let saveDebounce = Duration.seconds(1)
 
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
+    @AppStorage("reader.math") private var mathEnabled = false
     @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
     @AppStorage(ReadingSettings.widthKey) private var storedWidth = ReaderWidth.defaultValue.rawValue
     @AppStorage(ReadingSettings.fontDesignKey) private var fontDesign = ReaderFontDesign.system
@@ -37,7 +38,7 @@ struct RenderedView: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
-        let key = PreparedDocument.Key(text: markdown, obsidian: obsidianEnabled, math: false)
+        let key = PreparedDocument.Key(text: markdown, obsidian: obsidianEnabled, math: mathEnabled)
         // A cached document draws on the first frame, so Source → Rendered doesn't flash the placeholder. While a new
         // key prepares (the Obsidian toggle), the previous render stays up instead.
         let document = prepared.flatMap { $0.key == key ? $0 : nil } ?? DocumentPreparer.shared.cached(key) ?? prepared
@@ -173,12 +174,15 @@ struct RenderedView: View {
     private func rendered(_ document: PreparedDocument) -> some View {
         Group {
             if document.sections.count == 1, let section = document.sections.first {
-                StructuredText(section.markup, parser: PreparsedParser(section: section))
+                StructuredText(section.markup, parser: PreparsedParser(section: section, math: document.key.math))
             } else {
                 LazyVStack(alignment: .leading, spacing: Self.sectionSpacing) {
                     ForEach(document.sections) { section in
-                        StructuredText(section.markup, parser: PreparsedParser(section: section))
-                            .id("section-\(section.id)")
+                        StructuredText(
+                            section.markup,
+                            parser: PreparsedParser(section: section, math: document.key.math),
+                        )
+                        .id("section-\(section.id)")
                     }
                 }
             }

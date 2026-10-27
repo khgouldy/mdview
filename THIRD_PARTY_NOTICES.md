@@ -14,7 +14,7 @@ The app target depends on Textual 0.5.0 (`.upToNextMinor(from: "0.5.0")`). Textu
 
 Textual's test-only dependency swift-snapshot-testing is not in this app's `Package.resolved` and is not linked.
 
-mdview does not turn on Textual's math syntax. swiftui-math still ships because Textual links the SwiftUIMath product.
+Math is off by default. The reader menu has a Math (LaTeX) switch (`reader.math`); only when it is on does mdview apply Textual's math syntax, which draws formulas with swiftui-math. swiftui-math ships either way because Textual links the SwiftUIMath product.
 
 ## Textual
 

@@ -9,6 +9,7 @@ struct ReaderView: View {
 
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
+    @AppStorage("reader.math") private var mathEnabled = false
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Environment(\.readerContext) private var readerContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -376,6 +377,8 @@ extension ReaderView {
         Menu {
             Toggle("Obsidian extras", isOn: $obsidianEnabled)
                 .accessibilityIdentifier("settings.obsidian")
+            Toggle("Math (LaTeX)", isOn: $mathEnabled)
+                .accessibilityIdentifier("settings.math")
             ReadingSettingsMenu()
             ExportMenu(
                 markdown: document.text,

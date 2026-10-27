@@ -35,6 +35,7 @@ MdV stores these preferences in the app's on-device settings:
 
 - whether documents open in Rendered or Source view
 - whether Obsidian extras are on
+- whether Math (LaTeX) rendering is on (`reader.math`, off by default)
 - text size (`reader.textScale`, 0.85 to 1.6)
 - column width (`reader.width`: 560, 680 or 860 points)
 - font style (`reader.fontDesign`: system, serif or mono)

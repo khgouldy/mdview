@@ -150,8 +150,14 @@ actor DocumentPreparer {
 /// the main actor. Any other input (never expected) falls back to Textual's own parser.
 struct PreparsedParser: MarkupParser {
     let section: PreparedSection
+    /// Math needs Textual's own parser (its pattern pass is `@MainActor`), so a math document is parsed here and the
+    /// off-main parse is skipped. Off by default, so the common path stays free.
+    var math = false
 
     func attributedString(for input: String) throws -> AttributedString {
+        if math {
+            return try AttributedStringMarkdownParser.markdown(syntaxExtensions: [.math]).attributedString(for: input)
+        }
         if input == section.markup {
             return section.attributed
         }

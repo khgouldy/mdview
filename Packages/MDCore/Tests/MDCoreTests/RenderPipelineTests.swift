@@ -18,13 +18,6 @@ struct RenderPipelineTests {
         #expect(output.contains("[Image: pic](https://example.com/a.png)"))
     }
 
-    @Test func `math is ignored for now`() {
-        #expect(RenderPipeline.prepare(input, obsidian: true, math: true) == RenderPipeline.prepare(
-            input,
-            obsidian: true,
-        ))
-    }
-
     @Test func `task step runs after front matter removal and before remote image linkify`() {
         let markdown = "---\n- [x] meta\n---\n- [ ] todo ![p](https://e.com/a.png)\n"
         let withObsidian = RenderPipeline.prepare(markdown, obsidian: true)

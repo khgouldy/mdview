@@ -17,6 +17,7 @@ Version 0.1.0 (build 2). iOS 18 and later, iPhone and iPad.
 - A local image is read from the document's folder. Any other URL is refused.
 - The reader menu also sets text size (Text: Smaller, Larger, Reset; 0.85 to 1.6 times, on top of Dynamic Type), column width (Narrow 560, Standard 680, Wide 860 points) and font (System, Serif, Mono). Source follows the text size.
 - Obsidian extras are on by default. They hide a leading YAML front matter block and show `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. The reader menu has a switch for Obsidian extras. Source always shows the original file.
+- Math is off by default, because `$5 and $10` would otherwise draw as a formula. The reader menu has a Math (LaTeX) switch. When it is on, `$…$` and `$$…$$` render as math, and LaTeX's `\(…\)` and `\[…\]` are read the same way outside code. Math is drawn on the device with no network.
 - Find highlights matches in the source, shows `n of N` (or `No matches`), and moves to the next match when you submit. Clearing the query returns to Rendered or Source, whichever was already selected.
 
 ## Speed and layout
@@ -27,7 +28,7 @@ Opening is fast by design: parsing runs off the main actor, a placeholder draws 
 
 The app does not use the network. `URLSession`, `NWConnection`, `WKWebView`, and `CFNetwork` are lint errors under `App/` and `Packages/`.
 
-The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Preferences stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`), the Obsidian switch (`obsidian.enabled`), and the reading settings `reader.textScale`, `reader.width` and `reader.fontDesign`. The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
+The Share extension reads only the item you share and keeps nothing. Pasted text stays in memory unless you save it. Preferences stored in UserDefaults on the device: the Rendered / Source choice (`reader.mode`), the Obsidian switch (`obsidian.enabled`), the Math switch (`reader.math`), and the reading settings `reader.textScale`, `reader.width` and `reader.fontDesign`. The privacy manifest reports no tracking and no collected data. See `App/mdview/PrivacyInfo.xcprivacy`.
 
 ## Build
 
