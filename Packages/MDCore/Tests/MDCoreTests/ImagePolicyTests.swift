@@ -26,4 +26,11 @@ final class ImagePolicyTests: XCTestCase {
         let url = try XCTUnwrap(URL(string: "ftp://example.com/photo.png"))
         XCTAssertFalse(ImagePolicy.allows(url))
     }
+
+    func testTaskMarkerURLsAreRejected() throws {
+        for name in ["checked", "unchecked"] {
+            let url = try XCTUnwrap(URL(string: "x-mdview-task:\(name)"))
+            XCTAssertFalse(ImagePolicy.allows(url))
+        }
+    }
 }

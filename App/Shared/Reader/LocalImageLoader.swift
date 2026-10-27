@@ -4,7 +4,8 @@ import SwiftUI
 import Textual
 import UIKit
 
-/// Loads Markdown images from the document directory. Anything `ImagePolicy` rejects is refused.
+/// Loads Markdown images from the document directory. Task list markers become checkboxes without touching
+/// files; anything else `ImagePolicy` rejects is refused.
 struct LocalImageLoader: AttachmentLoader {
     var baseDirectory: URL?
 
@@ -12,7 +13,10 @@ struct LocalImageLoader: AttachmentLoader {
         for url: URL,
         text: String,
         environment _: ColorEnvironmentValues,
-    ) async throws -> LocalFileImage {
+    ) async throws -> AnyAttachment {
+        if let marker = TaskMarker(url: url) {
+            return AnyAttachment(TaskCheckbox(marker: marker) as any Textual.Attachment)
+        }
         guard let fileURL = resolvedFileURL(for: url), ImagePolicy.allows(fileURL) else {
             throw LoaderError.refused
         }
@@ -20,7 +24,7 @@ struct LocalImageLoader: AttachmentLoader {
         guard let pixelSize = Self.pixelSize(of: data) else {
             throw LoaderError.unreadable
         }
-        return LocalFileImage(data: data, altText: text, pixelSize: pixelSize)
+        return AnyAttachment(LocalFileImage(data: data, altText: text, pixelSize: pixelSize) as any Textual.Attachment)
     }
 
     /// Absolute `file:` URLs are used as-is. Scheme-less paths are resolved against the document directory.
