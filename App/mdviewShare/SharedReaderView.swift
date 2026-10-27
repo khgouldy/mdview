@@ -95,7 +95,7 @@ struct SharedReaderView: View {
                     SharedInfoView(state: state)
                 }
         }
-        // PerfSignposts: M7 emits `firstRender` from the rendered content's first non-zero geometry here.
+        // `firstRender` comes from RenderedView's first non-zero geometry (see PerfSignposts).
     }
 
     @ViewBuilder

@@ -16,6 +16,7 @@ struct ReaderView: View {
 
     var body: some View {
         content
+            .task { PerfSignposts.beginOpen(bytes: document.text.utf8.count) }
             .navigationTitle(fileName)
             .navigationBarTitleDisplayMode(.inline)
             .searchable(

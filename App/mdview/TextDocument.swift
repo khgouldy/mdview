@@ -16,7 +16,7 @@ struct TextDocument: FileDocument, Sendable {
 
     init(configuration: ReadConfiguration) throws {
         let data = configuration.file.regularFileContents ?? Data()
-        text = TextDecoding.decode(data)
+        text = PerfSignposts.measure("decode") { TextDecoding.decode(data) }
         contentType = configuration.contentType
     }
 

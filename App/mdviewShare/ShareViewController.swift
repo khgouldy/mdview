@@ -11,7 +11,7 @@ final class ShareViewController: UIViewController, UIAdaptivePresentationControl
 
     override func viewDidLoad() {
         super.viewDidLoad()
-        // PerfSignposts: M7 starts the share open-to-render interval here.
+        PerfSignposts.beginOpen(bytes: 0)
         let providers = sharedProviders()
         let attachments = SharedItemLoader.attachments(of: providers)
         let selection = SharedItemLoader.select(from: attachments)
@@ -27,7 +27,11 @@ final class ShareViewController: UIViewController, UIAdaptivePresentationControl
         }
         let provider = SendableProvider(provider: providers[selection.candidate.index])
         loadTask = Task.detached(priority: .userInitiated) {
+            // In the extension `decode` covers reading the item and decoding it (SharedContent does both).
+            let decoding = PerfSignposts.interval("decode")
             let load = await SharedItemLoader.load(selection, from: provider)
+            decoding.end()
+            PerfSignposts.noteBytes(load.byteCount ?? 0)
             guard !Task.isCancelled else {
                 return
             }
