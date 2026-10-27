@@ -81,15 +81,12 @@ final class AccessibilityAuditTests: XCTestCase {
         app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
         app.launch()
 
-        let byIdentifier = app.buttons["launch.paste"]
-        let paste = byIdentifier.waitForExistence(timeout: 15) ? byIdentifier : app.buttons["Paste"]
-        guard paste.waitForExistence(timeout: 5), paste.isHittable else {
-            throw XCTSkip("The system paste control is not exposed or hittable, so the pasted reader can't be reached")
+        guard let paste = LaunchScreen.action(LaunchScreen.pasteLabel, in: app) else {
+            XCTFail("No hittable Paste button on the launch screen:\n\(app.debugDescription)")
+            return
         }
-        paste.tap()
-        guard app.buttons["paste.done"].waitForExistence(timeout: 10) else {
-            throw XCTSkip("The system paste control did not accept XCUITest's tap, so the pasted reader never opened")
-        }
+        LaunchScreen.tapPaste(paste, in: app)
+        XCTAssertTrue(app.buttons["paste.done"].waitForExistence(timeout: 10), "the pasted reader never opened")
         try audit(app)
     }
 

@@ -1,21 +1,28 @@
 import CoreTransferable
 import SwiftUI
+import UIKit
 import UniformTypeIdentifiers
 
-/// Launch-screen Paste. The system `PasteButton` reads the pasteboard only on the user's tap, so iOS shows no paste
-/// prompt. Blank pastes do nothing. Paste lives on the launch scene only.
+/// Launch-screen Paste. Blank pastes do nothing. Paste lives on the launch scene only.
+///
+/// This is a plain `Button`, not the system `PasteButton`. On iOS 26 `DocumentGroupLaunchScene` redraws its actions as
+/// its own buttons and leaves a `PasteButton` out, so the launch screen showed only How to Open Files (CI run
+/// 40504894387: the visible launch screen had no Paste). Reading `UIPasteboard` on the tap means iOS may ask
+/// "Allow Paste" the first time, which is the usual cost of a custom paste action.
 struct PasteMarkdownButton: View {
     @State private var pasted: PastedMarkdown?
 
     var body: some View {
-        PasteButton(payloadType: String.self) { strings in
-            guard let text = strings.first(where: { !$0.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty })
+        Button("Paste", systemImage: "doc.on.clipboard") {
+            // `hasStrings` doesn't read the contents, so an empty pasteboard never triggers the paste prompt.
+            guard UIPasteboard.general.hasStrings,
+                  let text = UIPasteboard.general.string,
+                  !text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
             else {
                 return
             }
             pasted = PastedMarkdown(text: text)
         }
-        .labelStyle(.titleAndIcon)
         .accessibilityIdentifier("launch.paste")
         .fullScreenCover(item: $pasted) { item in
             PastedReaderView(text: item.text)

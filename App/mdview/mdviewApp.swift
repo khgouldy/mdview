@@ -13,8 +13,9 @@ struct mdviewApp: App {
         DocumentGroup(viewing: TextDocument.self) { configuration in
             ReaderView(document: configuration.document)
         }
-        // iOS 27 fallback: if the system launch scene stops showing custom actions,
-        // move the paste and guide buttons into `overlayAccessoryView`. Not built; iOS 18 shows them as actions.
+        // The launch scene redraws these actions as system buttons, so they must be plain `Button`s (a `PasteButton`
+        // is dropped on iOS 26) and their accessibility identifiers stay on hidden source copies. If a later iOS stops
+        // showing custom actions, move them into `overlayAccessoryView`.
         DocumentGroupLaunchScene(AppName.display) {
             PasteMarkdownButton()
             OpenFilesHelpButton()

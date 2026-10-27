@@ -1,7 +1,8 @@
 import UIKit
 import XCTest
 
-/// Paste from the launch screen. `PasteButton` is a system paste control, so these taps never show a paste prompt.
+/// Paste from the launch screen. The app reads `UIPasteboard` on the tap, so `LaunchScreen.tapPaste` answers the
+/// "Allow Paste" prompt.
 @MainActor
 final class PasteTests: XCTestCase {
     private static let markdown = """
@@ -19,20 +20,18 @@ final class PasteTests: XCTestCase {
         app.launch()
 
         let paste = try pasteButton(in: app)
-        paste.tap()
+        LaunchScreen.tapPaste(paste, in: app)
         XCTAssertFalse(
             pastedTitle(in: app).waitForExistence(timeout: 3),
             "A blank paste opened the pasted reader",
         )
 
         UIPasteboard.general.string = Self.markdown
-        paste.tap()
-        guard pastedTitle(in: app).waitForExistence(timeout: 10) else {
-            throw XCTSkip(
-                "Tapped launch.paste with Markdown on the pasteboard and no pasted reader appeared. "
-                    + "The system paste control may not accept XCUITest's synthesized taps on this OS.",
-            )
-        }
+        LaunchScreen.tapPaste(paste, in: app)
+        XCTAssertTrue(
+            pastedTitle(in: app).waitForExistence(timeout: 10),
+            "Tapped Paste with Markdown on the pasteboard and no pasted reader appeared:\n\(app.debugDescription)",
+        )
 
         let heading = app.descendants(matching: .any)
             .matching(NSPredicate(format: "label CONTAINS %@", "Pasted heading"))
@@ -43,21 +42,18 @@ final class PasteTests: XCTestCase {
         let done = app.buttons["paste.done"]
         XCTAssertTrue(done.exists, "paste.done missing")
         done.tap()
-        XCTAssertTrue(paste.waitForExistence(timeout: 5), "Done did not return to the launch screen")
+        XCTAssertNotNil(
+            LaunchScreen.action(LaunchScreen.pasteLabel, in: app, timeout: 5),
+            "Done did not return to the launch screen",
+        )
         XCTAssertFalse(pastedTitle(in: app).exists)
     }
 
-    /// The control by its identifier, or by the system "Paste" label if SwiftUI doesn't pass the identifier through.
+    /// The visible Paste action. Fails, not skips: the launch screen must offer Paste.
     private func pasteButton(in app: XCUIApplication) throws -> XCUIElement {
-        let byIdentifier = app.buttons["launch.paste"]
-        let button = byIdentifier.waitForExistence(timeout: 15) ? byIdentifier : app.buttons["Paste"]
-        guard button.waitForExistence(timeout: 5) else {
-            throw XCTSkip(
-                "No launch.paste or Paste button on the launch screen; the system paste control isn't exposed",
-            )
-        }
-        guard button.isHittable else {
-            throw XCTSkip("The launch.paste control exists but isn't hittable in XCUITest")
+        guard let button = LaunchScreen.action(LaunchScreen.pasteLabel, in: app) else {
+            XCTFail("No hittable Paste button on the launch screen:\n\(app.debugDescription)")
+            throw XCTSkip("unreachable after XCTFail")
         }
         return button
     }
