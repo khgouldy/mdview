@@ -10,8 +10,6 @@ import UniformTypeIdentifiers
 /// 40504894387: the visible launch screen had no Paste). Reading `UIPasteboard` on the tap means iOS may ask
 /// "Allow Paste" the first time, which is the usual cost of a custom paste action.
 struct PasteMarkdownButton: View {
-    @State private var pasted: PastedMarkdown?
-
     var body: some View {
         Button("Paste", systemImage: "doc.on.clipboard") {
             // `hasStrings` doesn't read the contents, so an empty pasteboard never triggers the paste prompt.
@@ -21,19 +19,10 @@ struct PasteMarkdownButton: View {
             else {
                 return
             }
-            pasted = PastedMarkdown(text: text)
+            LaunchPresenter.present(PastedReaderView(text: text), style: .fullScreen)
         }
         .accessibilityIdentifier("launch.paste")
-        .fullScreenCover(item: $pasted) { item in
-            PastedReaderView(text: item.text)
-        }
     }
-}
-
-/// One paste. A new identity per paste, so pasting the same text twice still opens a fresh reader.
-private struct PastedMarkdown: Identifiable {
-    let id = UUID()
-    let text: String
 }
 
 /// Pasted text in the normal reader. It stays in memory unless the reader saves it with Save to Files.
@@ -44,6 +33,7 @@ struct PastedReaderView: View {
     let document: TextDocument
 
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.launchDismiss) private var launchDismiss
     @State private var savesToFiles = false
     @State private var exportName = ""
     @State private var saveError: String?
@@ -65,7 +55,7 @@ struct PastedReaderView: View {
                         .accessibilityIdentifier("paste.save")
                     }
                     ToolbarItem(placement: .confirmationAction) {
-                        Button("Done") { dismiss() }
+                        Button("Done") { launchDismiss.map { $0() } ?? dismiss() }
                             .accessibilityIdentifier("paste.done")
                     }
                 }
