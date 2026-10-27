@@ -15,12 +15,13 @@ Version 0.2.0 (build 3). iOS 18 and later, iPhone and iPad.
 - A plain-text file stays on Source. The Rendered / Source switch is hidden.
 - An `http` or `https` image becomes a link labeled `Image: …`. Tap it and Safari opens. The image is not fetched.
 - A local image is read from the document's folder. Any other URL is refused.
-- The reader menu also sets text size (Text: Smaller, Larger, Reset; 0.85 to 1.6 times, on top of Dynamic Type), column width (Narrow 560, Standard 680, Wide 860 points; regular width only, so iPad and not iPhone) and font (System, Serif, Mono). Source follows the text size.
+- The ••• menu (VoiceOver: More) also sets text size (one row of smaller, Reset, larger that keeps the menu open; 0.85 to 1.6 times, on top of Dynamic Type), column width (Narrow 560, Standard 680, Wide 860 points; regular width only, so iPad and not iPhone) and font (System, Serif, Mono). Source follows the text size.
 - Obsidian extras are on by default. They hide a leading YAML front matter block and show `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. The reader menu has a switch for Obsidian extras. Source always shows the original file.
 - Math is off by default, because `$5 and $10` would otherwise draw as a formula. The reader menu has a Math (LaTeX) switch. When it is on, `$…$` and `$$…$$` render as math, and LaTeX's `\(…\)` and `\[…\]` are read the same way outside code. Math is drawn on the device with no network.
-- The Outline button (rendered Markdown with two or more headings) lists the headings and jumps to one. A file reopens at the spot where you stopped reading. Code blocks have a copy button.
-- The reader menu exports the rendered document as a PDF or prints it. On iPad, the View menu has keyboard shortcuts: ⌘1 Rendered, ⌘2 Source, ⇧⌘O Outline, ⌘+ ⌘− ⌘0 text size, ⌘P Print, ⇧⌘E Export PDF.
-- Find highlights matches in the source, shows `n of N` (or `No matches`), and moves to the next match when you submit. Clearing the query returns to Rendered or Source, whichever was already selected.
+- Outline, in the ••• menu (dimmed below two headings), lists the headings and jumps to one. A file reopens at the spot where you stopped reading. Code blocks have a copy button.
+- The reader menu exports the rendered document as a PDF or prints it. On iPad, the View menu has keyboard shortcuts: ⌘1 Rendered, ⌘2 Source, ⇧⌘O Outline, ⌘F Find in Document, ⌘+ ⌘− ⌘0 text size, ⌘P Print, ⇧⌘E Export PDF.
+- Find (the bottom bar's magnifying glass, Find in Document in the menu, or ⌘F) switches to Source and opens the system find bar.
+- GitHub alerts (`> [!NOTE]` and the other four) and, with Obsidian extras on, Obsidian callouts render as tinted callouts with a symbol and a title.
 
 ## Speed and layout
 

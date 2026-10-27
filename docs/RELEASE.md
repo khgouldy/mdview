@@ -38,7 +38,7 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 - [ ] Dark Mode: rendered Markdown and the source view both follow the appearance.
 - [ ] Set the system text size to the largest accessibility size. Rendered text and the source view both grow.
 - [ ] Obsidian extras (reader menu) is on: a leading YAML front matter block is hidden, and `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` show as plain text. Turn it off and those are rendered as written. Source still shows the original file either way.
-- [ ] Find: type a query, matches are highlighted in the source, the count reads `n of N` (or `No matches`). Submit moves to the next match and wraps. Clear the query and the previous Rendered or Source choice returns.
+- [ ] Find: tap the bottom bar's Find, Find in Document in the menu, and ⌘F on iPad. Each switches to Source and opens the system find bar; matches highlight and the arrows move between them. A plain text file has Find and the menu too.
 - [ ] A remote image (`![alt](https://…)`) is a link, not an inline image. Tap it and Safari opens. The app does not show the image bytes.
 - [ ] Grok Bot: share a message, tap MdV. It renders (the "Text Document" case). Repeat from Messages, Mail and Files.
 - [ ] In the share reader, the info button opens the What was shared panel with the registered types, name and byte count. Copy puts them on the pasteboard.
@@ -47,7 +47,7 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 - [ ] The icon in light, dark and tinted: Home Screen, then Customize.
 - [ ] The Home Screen name reads `MdV`; the App Store name is `MdV: Markdown Viewer`.
 - [ ] VoiceOver: the rotor's Headings steps through a document, a table reads by row and column, and list items read as one element with no "circle".
-- [ ] Differentiate Without Color: the current Find match is marked by more than color.
+- [ ] Differentiate Without Color: the system find bar marks the current match by more than color.
 - [ ] Largest accessibility text size: wide tables scroll sideways and nothing is truncated.
 - [ ] Reduce Motion and Increased Contrast: no animated transitions, and the accent color stays readable.
 - [ ] Task lists render as read-only checkboxes, with "Done" and "Not done" read by VoiceOver.
@@ -60,13 +60,14 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 
 Run these on a device after the checklist above.
 
-- [ ] Outline: open a document with several headings, tap Outline, tap a heading, and the document scrolls to it. A one-heading document and Source show no Outline button. A duplicate heading lands on the first one.
+- [ ] Outline: open a document with several headings, open the ••• menu, tap Outline, tap a heading, and the document scrolls to it. A one-heading document shows Outline dimmed, and the top bar never moves. A duplicate heading lands on the first one.
 - [ ] Copy: tap the copy button on a code block, paste elsewhere, and the code matches. VoiceOver reads the button as copy.
-- [ ] Settings: change text size, width and font in the menu. Rendered and Source both follow, they survive a relaunch, and Reset returns to normal.
+- [ ] Settings: change text size (the row stays open while you tap), width (iPad only) and font in the menu. Rendered and Source both follow, they survive a relaunch, and Reset returns to normal.
 - [ ] Position: scroll halfway, close the file, reopen it from Recents, and it returns near the same spot. A pasted note and a shared item start at the top.
 - [ ] PDF: Export PDF on a short and a long document. Pages are Letter or A4 with no cut-off lines. A file over 1 MB says "Too long to export".
 - [ ] Print: Print shows the system print dialog with the rendered document.
 - [ ] Math: off by default, so `$5 and $10` stays plain. Switch Math (LaTeX) on and `$x^2$` and `\(x^2\)` draw as formulas. Code spans stay literal.
-- [ ] Shortcuts (iPad, hardware keyboard): ⌘1, ⌘2, ⇧⌘O, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E work in a document and are disabled on the launch screen.
+- [ ] Callouts: `> [!NOTE]`, `[!TIP]`, `[!IMPORTANT]`, `[!WARNING]`, `[!CAUTION]` and `> [!tip]- My title` show as tinted boxes with a symbol and bold title, in light and dark, in the app and the share extension.
+- [ ] Shortcuts (iPad, hardware keyboard): ⌘1, ⌘2, ⇧⌘O, ⌘F, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E work in a document and are disabled on the launch screen.
 - [ ] Screenshots: run `scripts/screenshots.sh` on a Mac, check that `06-outline.png` and `07-tasks.png` exist in both folders, and upload all seven in order.
 - [ ] Version: Settings, About or the App Store build shows 0.2.0 (3) for the app and the Share extension.

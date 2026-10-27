@@ -21,23 +21,22 @@ The scene shows `ReaderView` with the document's text. The navigation title is t
 - `reader.mode`, `rendered` or `source`, default rendered
 - `obsidian.enabled`, default true
 
-Markdown files get a segmented picker (`reader.modePicker`) and a menu (`reader.menu`) with one toggle, Obsidian extras (`settings.obsidian`). Files whose extension is `txt` or `text`, and any other file that is not the Markdown UTI, skip the picker and the menu and show source only.
+Markdown files get a segmented picker (`reader.modePicker`). Every document gets the ••• menu (`reader.menu`, label "More", `ReaderMenu.swift`) and a Find button (`reader.find`) in the bottom bar. For Markdown the menu has sections: Outline (`reader.outline`) and Find in Document (`reader.findInDocument`); Reading (`ReadingSettingsMenu`); Rendering (Obsidian extras `settings.obsidian`, Math `settings.math`); Export PDF and Print; How to Open Files (`reader.help`). Files whose extension is `txt` or `text`, and any other file that is not the Markdown UTI, skip the picker, show source only, and get only the text size row and help in the menu.
 
-A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces the source view, highlights matches, and shows `n of N` or `No matches` in `reader.searchCount`. Submit advances and wraps. Clearing the query does not write `reader.mode`, so the previous Rendered or Source choice comes back.
-
-Matches live in `@State`. A `.task(id:)` keyed on the query and the text waits 150 ms after the last keystroke, runs `TextSearch.ranges` in a detached task (signpost `find`), and stores the result; a newer keystroke cancels the wait. Clearing the query clears the matches at once. The count row appears once the first search for a query finishes; until the next search lands it shows the previous result.
+Find is the system's: Find (button, menu item or ⌘F) switches Markdown to Source, which writes `reader.mode`, and hands `SourceView` a new `FindRequest`. `SourceTextView` presents its `UIFindInteraction` navigator once it is in a window, so a text view made by the switch still opens it. Leaving Source clears the request, so a later Source view doesn't reopen the bar. `SourceView` can still paint `matches`, but the reader no longer passes any; `TextSearch` and `FindHighlight` stay in MDCore unused by the app.
 
 Markdown over 2 MB (`PreparedDocument.largeBytes`, the same limit as `SharedContent.sourceOnlyAboveBytes`) opens in Source under a bar, "Large file. Showing Source." (`reader.largeFile`), with a Render Anyway button (`reader.renderAnyway`). The choice is `@State` for that document; the picker toggles it too, and neither writes `reader.mode`.
 
 ## Reader features (0.2)
 
-- **Outline.** `HeadingOutline` (MDCore) finds headings with the same pipeline and sections the reader uses. `OutlineSheet` (`outline.sheet`, rows `outline.row.N`) lists them from the `reader.outline` toolbar button, shown only for rendered Markdown with two or more headings, and the reader scrolls to the heading's slug. ⇧⌘O opens it.
+- **Outline.** `HeadingOutline` (MDCore) finds headings with the same pipeline and sections the reader uses. `OutlineSheet` (`outline.sheet`, rows `outline.row.N`) lists them from Outline in the ••• menu, disabled below two headings (and for a large file in Source), and the reader scrolls to the heading's slug. From Source it switches to Rendered first. ⇧⌘O opens it.
 - **Copy code.** `CopyableCodeBlockStyle` gives each code block a slim header row above the code: the fence's language (if any) and an icon-only copy button (`code.copy`, label "Copy code", value "Copied" for 1.5 s after a tap). The header is outside Textual's `Overflow`, so it never covers code and stays put when a wide block scrolls. It writes only to the pasteboard.
 - **Reading settings.** `ReadingSettings` holds `reader.textScale` (0.85 to 1.6), `reader.width` (560, 680 or 860 pt) and `reader.fontDesign`. They sit on top of Dynamic Type and apply to Rendered, Source and PDF export. ⌘+, ⌘− and ⌘0 step the scale.
 - **Reading position.** `ReadingPositionStore` (MDCore) keeps one scroll fraction (0 to 1) for each of the 200 most recent files, in `reader.positions`. Files are keyed by a SHA-256 hash of the path. Positions under 0.02 are not stored, and pasted or shared text has no file, so nothing is kept for it.
 - **PDF and print.** `ExportMenu` and `PDFExporter` (`App/mdview/Export`) draw the rendered document page by page with `PageSlicer`, on Letter or A4 by region, and hand it to the share sheet or `UIPrintInteractionController`. Documents over 1 MB show "Too long to export". Nothing leaves the device unless the user shares the PDF.
 - **Math.** `reader.math`, off by default. `MathDelimiters` (MDCore) normalizes `\(…\)` and `\[…\]` for Textual's math extension, outside code. Math sections over 64 KB render without math.
-- **Shortcuts.** `ReaderCommands` adds the View menu: ⌘1, ⌘2, ⇧⌘O, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E. They are disabled on the launch screen.
+- **Callouts.** `CalloutPreprocessor` (MDCore) rewrites the first line of a quote that starts `[!type]` into a title paragraph led by an `x-mdview-callout:` image. GitHub's five kinds always count; Obsidian types map onto them (`CalloutKind.kind(forType:obsidian:)`) when Obsidian extras are on. `LocalImageLoader` draws that image as `CalloutSymbol`, which reports its kind to the quote's `QuoteCallout`, and `CalloutBlockQuoteStyle` then draws the accent bar, tint and primary text.
+- **Shortcuts.** `ReaderCommands` adds the View menu: ⌘1, ⌘2, ⇧⌘O, ⌘F, ⌘+, ⌘−, ⌘0, ⌘P and ⇧⌘E. They are disabled on the launch screen.
 
 ## Source layout
 
@@ -113,7 +112,8 @@ The actor shares one task between concurrent requests for a key and keeps the la
 **Pipeline.** `RenderPipeline.prepare(_:obsidian:math:)` in MDCore is the only text transform rendering uses. It runs two preprocessors before the parse (`math` is reserved and ignored until the math bead):
 
 1. When Obsidian extras are on, `ObsidianPreprocessor.process` drops a leading `---` / `...` front matter block and rewrites wikilinks to plain text. Fenced code, inline code, `![[embeds]]`, and callout blocks are left alone. Source view never runs this.
-2. `RemoteImages.linkify` always rewrites `![alt](http://…)` and `![alt](https://…)` outside code into `[Image: alt](url)`.
+2. `CalloutPreprocessor.process` turns GitHub alert and (with Obsidian extras) Obsidian callout marker lines into title paragraphs.
+3. `RemoteImages.linkify` always rewrites `![alt](http://…)` and `![alt](https://…)` outside code into `[Image: alt](url)`.
 
 Links use the system open action. An `http` or `https` link opens Safari.
 

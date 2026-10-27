@@ -50,11 +50,12 @@ READ ANYTHING SHARED TO YOU
 • A built-in guide, How to Open Files, shows every way to get a file into MdV.
 
 MADE FOR LONG READS
-• Outline: tap Outline to see every heading and jump straight to it.
+• Outline: see every heading and jump straight to it.
 • Picks up where you left off: a file reopens at the spot you stopped reading.
 • Reading settings: text size, column width, and a System, Serif, or Mono font.
 • Copy any code block with one tap.
 • Task lists show as read-only checkboxes.
+• GitHub alerts and Obsidian callouts show as tinted callouts.
 • Export a document as a PDF, or print it.
 • Math (LaTeX) is optional and off by default, so dollar amounts stay plain text.
 • Keyboard shortcuts on iPad: rendered and source, outline, text size, print, and export.
@@ -68,7 +69,7 @@ PRIVATE BY DESIGN
 FEATURES
 • Opens .md, .markdown, .mdown, and plain text files from Files, iCloud Drive, other file providers, Share, Open In, and Recents.
 • Rendered and Source views, with your choice remembered.
-• Find in document: matches are highlighted with a running "2 of 7" count.
+• Find in document with the system find bar.
 • Obsidian extras: hides YAML front matter and shows [[wikilinks]] as plain text. Turn it off in the menu to see them as written.
 • Follows Dark Mode and Dynamic Type, and works with VoiceOver.
 • iPhone and iPad, including drag and drop on iPad.
@@ -79,7 +80,7 @@ MdV is a viewer, not an editor. It doesn't sync, and it doesn't manage a library
 MdV is open source under the MIT license: github.com/khgouldy/mdview
 ```
 
-2361/4000
+2379/4000
 
 ## What's New in 0.2.0
 
@@ -92,13 +93,15 @@ MdV is open source under the MIT license: github.com/khgouldy/mdview
 • Optional Math (LaTeX), off by default.
 • iPad keyboard shortcuts in the View menu.
 • Task lists show as checkboxes.
+• GitHub alerts and Obsidian callouts.
+• Find with the system find bar, from the toolbar or ⌘F.
 • Share Markdown from any app and read it in place.
 • Paste Markdown from the launch screen.
 • Better VoiceOver, Reduce Motion, and larger text support.
 • Faster opening of large files.
 ```
 
-517/4000
+613/4000
 
 ## Keywords
 

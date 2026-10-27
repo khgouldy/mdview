@@ -43,11 +43,11 @@ Some chat apps share a message as plain text with no file name, so iOS can only 
 
 ### What does the Obsidian extras toggle do?
 
-Open the menu (the ellipsis button in the top right of a document) and switch Obsidian extras on or off. It is on by default. When it is on, MdV hides a YAML front matter block at the top of the file and shows wikilinks such as `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. When it is off, those are shown exactly as written. The setting does not change your file.
+Open the ••• menu (top right of a document; VoiceOver calls it More) and switch Obsidian extras on or off under Rendering. It is on by default. When it is on, MdV hides a YAML front matter block at the top of the file and shows wikilinks such as `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` as plain text. When it is off, those are shown exactly as written. The setting does not change your file.
 
 ### How do I jump to a heading?
 
-In a rendered Markdown document with two or more headings, tap Outline in the toolbar, then tap a heading. On iPad with a keyboard, press ⇧⌘O.
+Open the ••• menu and tap Outline, then tap a heading. If you are in Source, MdV switches to Rendered first. Outline is dimmed when the document has fewer than two headings. On iPad with a keyboard, press ⇧⌘O.
 
 ### Does MdV remember where I stopped reading?
 
@@ -55,7 +55,11 @@ Yes. When you reopen a file, MdV scrolls back to where you left it. It keeps thi
 
 ### How do I change the text size, width or font?
 
-Open the menu (the ellipsis button) and use the reading settings: text size, column width (Narrow, Standard, Wide), and font (System, Serif, Mono). They apply on top of your system text size. Column width is on iPad only: an iPhone screen is narrower than every column width, so the menu leaves it out there (and in a narrow iPad Split View or Slide Over window).
+Open the ••• menu and use the Reading section. The text size row (smaller, Reset, larger) keeps the menu open, so you can tap it a few times and watch the text change. Below it are column width (Narrow, Standard, Wide) and font (System, Serif, Mono). They apply on top of your system text size. Plain text files show only the text size row. Column width is on iPad only: an iPhone screen is narrower than every column width, so the menu leaves it out there (and in a narrow iPad Split View or Slide Over window).
+
+### What is in the ••• menu?
+
+From top to bottom, for Markdown: Outline and Find in Document; Reading (text size, column width on iPad, font); Rendering (Obsidian extras, Math (LaTeX)); Export PDF and Print; How to Open Files. Plain text files get the text size row and How to Open Files.
 
 ### How do I copy a code block?
 
@@ -75,7 +79,7 @@ Use the Rendered / Source control at the bottom of the screen. Source shows the 
 
 ### How do I search in a document?
 
-Pull down on a document to reveal the Find field and type. MdV switches to the source text, highlights the matches, and shows a count such as "2 of 7". Press Search or Return to go to the next match. Clear the field to return to your previous view.
+Tap Find (the magnifying glass next to Rendered / Source at the bottom of the screen), choose Find in Document in the ••• menu, or press ⌘F on iPad. MdV switches to Source and opens the system find bar: type to highlight every match, and use the arrows to move between them. Tap Rendered to go back to the rendered document.
 
 ### What keyboard shortcuts are there?
 
@@ -91,7 +95,11 @@ On iPad with a hardware keyboard, the View menu (hold ⌘ to see it) works while
 | ⌘0 | Actual size |
 | ⌘P | Print |
 | ⇧⌘E | Export PDF |
-| ⌘F | Find (provided by the system) |
+| ⌘F | Find in Document |
+
+### Does MdV show callouts?
+
+Yes. GitHub alerts (`> [!NOTE]`, `> [!TIP]`, `> [!IMPORTANT]`, `> [!WARNING]`, `> [!CAUTION]`, in any letter case) show as a tinted box with a colored bar, a symbol and a bold title. With Obsidian extras on, Obsidian callouts such as `> [!info]`, `> [!success]`, `> [!question]` or `> [!danger]` use the closest of those five looks, and a title after the marker (`> [!tip] My title`) replaces the default one. Foldable callouts (`[!tip]-`) are always shown open.
 
 ### Why don't web images show?
 
