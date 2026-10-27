@@ -17,6 +17,7 @@ struct ReaderView: View {
     @State private var currentMatch = 0
     @State private var find = FindResult()
     @State private var renderAnyway = false
+    @State private var showsHelp = false
 
     /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
     private static let findDebounce = Duration.milliseconds(150)
@@ -60,6 +61,9 @@ struct ReaderView: View {
                 }
             }
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
+            .sheet(isPresented: $showsHelp) {
+                OpenFilesHelpView()
+            }
         #if DEBUG
             .onAppear(perform: applyScreenshotQuery)
         #endif
@@ -107,17 +111,6 @@ struct ReaderView: View {
         .background(.bar)
         .accessibilityElement(children: .contain)
         .accessibilityIdentifier("reader.largeFile")
-    }
-
-    private var readerMenu: some View {
-        Menu {
-            Toggle("Obsidian extras", isOn: $obsidianEnabled)
-                .accessibilityIdentifier("settings.obsidian")
-        } label: {
-            Image(systemName: "ellipsis.circle")
-        }
-        .accessibilityIdentifier("reader.menu")
-        .accessibilityLabel("Settings")
     }
 
     @ViewBuilder
@@ -312,4 +305,21 @@ private struct FindKey: Equatable, Sendable {
 private struct FindResult {
     var key: FindKey?
     var matches: [Range<String.Index>] = []
+}
+
+extension ReaderView {
+    private var readerMenu: some View {
+        Menu {
+            Toggle("Obsidian extras", isOn: $obsidianEnabled)
+                .accessibilityIdentifier("settings.obsidian")
+            Button("How to Open Files", systemImage: "questionmark.circle") {
+                showsHelp = true
+            }
+            .accessibilityIdentifier("reader.help")
+        } label: {
+            Image(systemName: "ellipsis.circle")
+        }
+        .accessibilityIdentifier("reader.menu")
+        .accessibilityLabel("Settings")
+    }
 }
