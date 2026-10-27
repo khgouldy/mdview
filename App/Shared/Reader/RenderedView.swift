@@ -2,7 +2,8 @@ import MDCore
 import SwiftUI
 import Textual
 
-/// GitHub-styled Markdown. Textual lays out and highlights code. Remote images are links.
+/// GitHub-styled Markdown with VoiceOver headings and lists (`ReaderStyle`). Textual lays out and highlights code.
+/// Remote images are links.
 ///
 /// `DocumentPreparer` runs the pipeline and the parse in a detached task. Until it finishes, the first ~2 KB of the
 /// source shows as plain text. A document over 64 KB is cut at headings and drawn as a `LazyVStack` of sections, so
@@ -62,9 +63,9 @@ struct RenderedView: View {
             }
         }
         .font(.body)
-        .textual.structuredTextStyle(.gitHub)
+        .textual.structuredTextStyle(.reader)
         .textual.highlighterTheme(.default)
-        .textual.textSelection(.enabled)
+        .modifier(ReaderTextSelection())
         .textual.imageAttachmentLoader(LocalImageLoader(baseDirectory: baseDirectory))
         .onAppear { trace.beginLayout() }
         .onGeometryChange(for: CGFloat.self) { $0.size.height } action: { height in
@@ -102,6 +103,21 @@ struct RenderedView: View {
             return String(head)
         }
         return String(head[..<newline])
+    }
+}
+
+/// Text selection, except while VoiceOver runs (K3). Textual's selection overlay covers the document with a view that
+/// has no accessibility properties, so VoiceOver would find nothing under it. Turning VoiceOver off brings selection
+/// back.
+private struct ReaderTextSelection: ViewModifier {
+    @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+
+    func body(content: Content) -> some View {
+        if voiceOverEnabled {
+            content.textual.textSelection(.disabled)
+        } else {
+            content.textual.textSelection(.enabled)
+        }
     }
 }
 

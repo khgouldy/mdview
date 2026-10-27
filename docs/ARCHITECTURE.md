@@ -27,7 +27,7 @@ Markdown over 2 MB (`PreparedDocument.largeBytes`, the same limit as `SharedCont
 
 ## Source layout
 
-The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `PreparedDocument`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`, `Perf/PerfSignposts`). The `mdviewShare` extension compiles `App/mdviewShare` and the same `App/Shared`; Textual and MDCore link statically into each target (K8). Because the extension builds with `APPLICATION_EXTENSION_API_ONLY`, `make lint` fails if any file in `App/Shared` contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
+The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `ReaderStyle`, `PreparedDocument`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`, `Perf/PerfSignposts`). The `mdviewShare` extension compiles `App/mdviewShare` and the same `App/Shared`; Textual and MDCore link statically into each target (K8). Because the extension builds with `APPLICATION_EXTENSION_API_ONLY`, `make lint` fails if any file in `App/Shared` contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
 
 ## Share extension
 
@@ -69,10 +69,20 @@ The product name comes from `AppName.display`.
 
 `RenderedView` (`reader.rendered`) puts Textual's `StructuredText` in a scroll view:
 
-- `.textual.structuredTextStyle(.gitHub)`
+- `.textual.structuredTextStyle(.reader)`, `ReaderStyle` below
 - `.textual.highlighterTheme(.default)`, Textual's Prism-based highlighter, which follows light and dark
-- `.textual.textSelection(.enabled)`
+- `.textual.textSelection(.enabled)`, or `.disabled` while VoiceOver runs (K3, `accessibilityVoiceOverEnabled`). Textual's selection overlay covers the document with a view that has no accessibility properties, so VoiceOver would find nothing under it. Selection comes back when VoiceOver stops.
 - width capped at 680 points
+
+The style and selection modifiers sit above the section stack, so every section gets them.
+
+**VoiceOver (`ReaderStyle`).** Textual has no accessibility code. `ReaderStyle` (`App/Shared/Reader/ReaderStyle.swift`) is Textual's `GitHubStyle`, member for member, with three replaced:
+
+- `AccessibleHeadingStyle` draws `GitHubHeadingStyle` and makes it one element (`.combine`) with `.isHeader` and `.accessibilityHeading(.h1…h6)`, so the rotor's Headings jump through the document. The H1/H2 divider has no label. Headings have no identifier, because the style gets an opaque label view and never the text. UI tests find a heading by its exact label.
+- `AccessibleListItemStyle` is `DefaultListItemStyle` with `.combine`, so an item reads as one element. A nested list is part of its parent item's block, so it joins that element.
+- `QuietBulletMarker` is GitHub's disc, circle and square by depth with `.accessibilityHidden(true)`. Without it, VoiceOver reads the SF Symbol name before every item. Ordered numbers (`DecimalListMarker`) stay in the label.
+
+Links in Textual are a spatial tap gesture on the text layout, not accessibility links, so combining a heading or an item does not change what a tap opens. `ReaderAccessibilityTests` checks that the Overview heading is hittable, that no element's label contains "circle" (the toolbar's `reader.menu` is excluded), that ordered items keep their number, and that a heading made of a link still opens Safari.
 
 Textual draws; nothing parses on the main actor. This repo does not contain a Markdown renderer or a syntax highlighter.
 
