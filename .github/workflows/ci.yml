@@ -8,6 +8,14 @@ on:
       - "docs/**"
       - "**/*.md"
   workflow_dispatch:
+    inputs:
+      only_testing:
+        description: >-
+          Optional comma-separated UI test identifiers, e.g.
+          mdviewUITests/ReaderAccessibilityTests/testLinkInHeadingStillOpens. When set, lint and unit tests are
+          skipped and the simulator step runs only these tests. Empty runs everything.
+        required: false
+        default: ""
 
 # Keyed on the ref so a newer push cancels the run already in progress.
 concurrency:
@@ -126,12 +134,14 @@ jobs:
           "${dir}/swiftformat" --version
 
       - name: Lint
+        if: ${{ github.event.inputs.only_testing == '' || github.event.inputs.only_testing == null }}
         run: |
           set -euo pipefail
           swiftformat --version
           make lint
 
       - name: Test
+        if: ${{ github.event.inputs.only_testing == '' || github.event.inputs.only_testing == null }}
         env:
           # MDCore perf budgets use 6x instead of 3x on this slower shared runner (see PerformanceTests.swift).
           MDVIEW_HOSTED_CI: "1"
@@ -146,7 +156,22 @@ jobs:
           # xcodebuild hands TEST_RUNNER_* to the UI test runner without the prefix. Tests that hit a limit of the
           # hosted runner, not of the app, skip on MDVIEW_HOSTED_CI and say why.
           TEST_RUNNER_MDVIEW_HOSTED_CI: "1"
-        run: make test-ios
+          ONLY_TESTING: ${{ github.event.inputs.only_testing }}
+        run: |
+          set -euo pipefail
+          args=""
+          if [ -n "${ONLY_TESTING:-}" ]; then
+            IFS=',' read -ra tests <<< "${ONLY_TESTING}"
+            for test in "${tests[@]}"; do
+              test="$(echo "${test}" | xargs)"
+              case "${test}" in
+                *[!A-Za-z0-9_/]*|"") echo "error: bad test identifier '${test}'" >&2; exit 1 ;;
+              esac
+              args="${args} -only-testing:${test}"
+            done
+            echo "running only:${args}"
+          fi
+          make test-ios TEST_IOS_ARGS="${args}"
 
       - name: Upload xcresult
         if: failure()

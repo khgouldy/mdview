@@ -9,6 +9,8 @@ IOS_DESTINATION = generic/platform=iOS
 # between releases, so a different local version can pass lint here and fail on CI, or the other way round.
 SWIFTFORMAT_VERSION = 0.64.1
 MDVIEW_IOS_DESTINATION ?= platform=iOS Simulator,name=iPhone 16
+# Extra xcodebuild test arguments, e.g. -only-testing:mdviewUITests/FindTests (CI's only_testing dispatch input).
+TEST_IOS_ARGS ?=
 BUILD_DIR ?= $(HOME)/GrokBot/builds/mdview
 ARCHIVE_PATH ?= $(BUILD_DIR)/mdview.xcarchive
 # Env file defining APPSTORE_CONNECT_KEY_ID, APPSTORE_CONNECT_ISSUER_ID, APPSTORE_CONNECT_KEY_PATH.
@@ -108,6 +110,7 @@ test-ios: tools gen
 		-parallel-testing-enabled NO \
 		-skipPackagePluginValidation \
 		-skipMacroValidation \
+		$(TEST_IOS_ARGS) \
 		CODE_SIGNING_ALLOWED=NO
 
 archive: tools gen
