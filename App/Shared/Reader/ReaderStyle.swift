@@ -63,14 +63,39 @@ struct AccessibleListItemStyle: StructuredText.ListItemStyle {
     }
 }
 
-/// GitHub's disc, circle and square bullets by depth, hidden from VoiceOver. Without this the SF Symbol names
-/// ("circle.fill") are read before every item.
+/// GitHub's disc, circle and square bullets by depth, drawn as shapes. Textual's `HierarchicalSymbolListMarker` draws
+/// SF Symbols, and an `Image(systemName:)` stays in the accessibility tree with its symbol name ("circle.fill") even
+/// under `.accessibilityHidden(true)` inside the item's combined element. A shape has no element and no name.
 struct QuietBulletMarker: StructuredText.UnorderedListMarker {
-    private let base: StructuredText.HierarchicalSymbolListMarker = .hierarchical(.disc, .circle, .square)
+    /// About the size of Textual's symbol bullets, which are SF Symbols at a third of the font size.
+    private static let size: FontScaled<CGFloat> = .fontScaled(0.35)
+    /// Textual's marker column width, so text lines up as it did with the symbol bullets.
+    private static let minWidth: FontScaled<CGFloat> = .fontScaled(1.5)
 
     func makeBody(configuration: Configuration) -> some View {
-        base.makeBody(configuration: configuration)
+        BulletShape(indentationLevel: configuration.indentationLevel)
             .accessibilityHidden(true)
+            .textual.frame(width: Self.size, height: Self.size)
+            .textual.frame(minWidth: Self.minWidth, alignment: .trailing)
+    }
+}
+
+/// A filled disc at the top level, a ring one level down and a filled square below that, repeating, like
+/// `.hierarchical(.disc, .circle, .square)`.
+private struct BulletShape: Shape {
+    var indentationLevel: Int
+
+    func path(in rect: CGRect) -> Path {
+        switch (max(indentationLevel, 1) - 1) % 3 {
+        case 0:
+            return Circle().path(in: rect)
+        case 1:
+            let lineWidth = rect.width * 0.2
+            let ring = rect.insetBy(dx: lineWidth / 2, dy: lineWidth / 2)
+            return Circle().path(in: ring).strokedPath(StrokeStyle(lineWidth: lineWidth))
+        default:
+            return Rectangle().path(in: rect.insetBy(dx: rect.width * 0.1, dy: rect.height * 0.1))
+        }
     }
 }
 
