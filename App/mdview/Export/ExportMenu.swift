@@ -143,9 +143,10 @@ extension PDFExport {
     func shareDocument(_ request: PDFRequest) {
         Task {
             let data = await self.data(for: request)
+            let keyWindow = UIApplication.shared.connectedScenes
+                .compactMap { $0 as? UIWindowScene }.flatMap(\.windows).first(where: \.isKeyWindow)
             guard let url = try? PDFFile.write(data, named: request.pdfName),
-                  let window = UIApplication.shared.connectedScenes
-                      .compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow),
+                  let window = keyWindow,
                   var top = window.rootViewController
             else {
                 return
