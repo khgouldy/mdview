@@ -23,6 +23,9 @@ enum ReaderLauncher {
         app.launchEnvironment["MDVIEW_SCREENSHOT_NAME"] = fixture.name
         app.launchEnvironment["MDVIEW_SCREENSHOT_MARKDOWN"] = fixture.markdown
         app.launchEnvironment["MDVIEW_SCREENSHOT_SCHEME"] = scheme
+        // Every launch starts from default reading settings and Rendered; see `MDVIEW_RESET_READING_SETTINGS` in
+        // `mdviewApp.swift`. `extraEnvironment` can turn it off with "0".
+        app.launchEnvironment["MDVIEW_RESET_READING_SETTINGS"] = "1"
         if let query {
             app.launchEnvironment["MDVIEW_SCREENSHOT_QUERY"] = query
         }

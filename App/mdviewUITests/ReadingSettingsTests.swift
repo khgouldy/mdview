@@ -13,11 +13,8 @@ final class ReadingSettingsTests: XCTestCase {
 
     func testLargerTwiceGrowsHeadingAndResetRestoresIt() {
         // Not `-reader.textScale 1.0`: a launch argument outranks the app's writes, so Larger would do nothing.
-        let app = ReaderLauncher.app(
-            fixture: .sharedNote,
-            scheme: "light",
-            extraEnvironment: ["MDVIEW_RESET_READING_SETTINGS": "1"],
-        )
+        // ReaderLauncher resets the stored settings instead.
+        let app = ReaderLauncher.app(fixture: .sharedNote, scheme: "light")
         app.launchArguments += ["-reader.mode", "rendered"]
         app.launch()
 
@@ -47,7 +44,10 @@ final class ReadingSettingsTests: XCTestCase {
         let menu = app.buttons["reader.menu"]
         XCTAssertTrue(menu.waitForExistence(timeout: 20), app.debugDescription)
         menu.tap()
-        let text = app.descendants(matching: .any)["reader.text"].firstMatch
+        // The size row may show inline (only its buttons are elements) or as a "Text Size" submenu.
+        let text = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier IN %@", ["reader.text", "reader.text.larger"]),
+        ).firstMatch
         XCTAssertTrue(text.waitForExistence(timeout: 5), app.debugDescription)
         let width = app.descendants(matching: .any).matching(
             NSPredicate(format: "identifier == %@ OR label == %@", "reader.width", "Width"),

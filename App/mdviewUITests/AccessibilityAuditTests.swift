@@ -37,11 +37,8 @@ final class AccessibilityAuditTests: XCTestCase {
 
     func testFindActive() throws {
         // Source, since a `-reader.mode` launch argument outranks the switch Find makes.
-        let app = launchReader(scheme: "light", mode: "source", query: "Draft")
-        XCTAssertTrue(
-            app.descendants(matching: .any)["reader.source"].firstMatch.waitForExistence(timeout: 20),
-            app.debugDescription,
-        )
+        // The find bar brings up the keyboard, which can hide the bottom bar, so wait for the source instead.
+        let app = launchReader(scheme: "light", mode: "source", query: "Draft", readyIdentifier: "reader.source")
         XCTAssertTrue(FindBar.field(in: app).waitForExistence(timeout: 10), app.debugDescription)
         try audit(app)
     }
@@ -274,12 +271,13 @@ final class AccessibilityAuditTests: XCTestCase {
         mode: String = "rendered",
         contentSize: String? = nil,
         query: String? = nil,
+        readyIdentifier: String = "reader.modePicker",
     ) -> XCUIApplication {
         let app = ReaderLauncher.app(fixture: .kitchenSink, scheme: scheme, contentSize: contentSize, query: query)
         app.launchArguments += ["-reader.mode", mode]
         app.launch()
         XCTAssertTrue(
-            app.descendants(matching: .any)["reader.modePicker"].firstMatch.waitForExistence(timeout: 20),
+            app.descendants(matching: .any)[readyIdentifier].firstMatch.waitForExistence(timeout: 20),
             app.debugDescription,
         )
         return app

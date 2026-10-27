@@ -10,7 +10,8 @@ final class FindTests: XCTestCase {
         continueAfterFailure = false
     }
 
-    /// No `-reader.mode` launch argument: it would outrank the switch to Source that Find makes.
+    /// No `-reader.mode` launch argument: it would outrank the switch to Source that Find makes. ReaderLauncher resets
+    /// the stored mode, so the reader opens on Rendered.
     func testFindButtonOpensFindBarOnSource() {
         let app = ReaderLauncher.app(fixture: .kitchenSink, scheme: "light")
         app.launch()
