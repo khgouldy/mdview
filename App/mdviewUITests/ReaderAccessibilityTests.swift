@@ -45,7 +45,9 @@ final class ReaderAccessibilityTests: XCTestCase {
         XCTAssertTrue(heading.waitForExistence(timeout: 20), app.debugDescription)
         XCTAssertTrue(heading.isHittable, "the linked heading is not hittable")
 
-        heading.tap()
+        // The combined heading element can span the column, so its center may miss the short link text. Tap just
+        // inside the leading edge, on the first letters of "Guide", as a reader would.
+        heading.coordinate(withNormalizedOffset: CGVector(dx: 0, dy: 0.5)).withOffset(CGVector(dx: 12, dy: 0)).tap()
         let safari = XCUIApplication(bundleIdentifier: "com.apple.mobilesafari")
         XCTAssertTrue(safari.wait(for: .runningForeground, timeout: 15), "tapping the heading link did not open Safari")
     }
