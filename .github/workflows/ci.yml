@@ -105,6 +105,9 @@ jobs:
         run: make lint
 
       - name: Test
+        env:
+          # MDCore perf budgets use 6x instead of 3x on this slower shared runner (see PerformanceTests.swift).
+          MDVIEW_HOSTED_CI: "1"
         run: make test
 
       - name: Simulator launch test

@@ -6,6 +6,11 @@ import XCTest
 ///
 /// Each stage runs five times and the median is compared with its budget: 3x the median recorded on the
 /// development Mac, rounded up to the next 50 ms. That lets noise through and catches a quadratic regression.
+///
+/// On GitHub's hosted runner (`MDVIEW_HOSTED_CI=1`, set by the CI Test step) the multiple is 6x. That shared VM runs
+/// the debug build 3.4x to 4.6x slower than the development Mac (prepare 1 MB: 454 ms and 618 ms against 135 ms in
+/// CI runs 40504546365 and 40489799094), so 3x failed on runner speed, not on a change. 6x still fails a quadratic
+/// regression on the 1 MB note.
 final class PerformanceTests: XCTestCase {
     private static let runs = 5
     private static let query = "render"
@@ -95,16 +100,20 @@ final class PerformanceTests: XCTestCase {
     }
 
     func testBudgetRoundsUpToFiftyMilliseconds() {
-        XCTAssertEqual(Self.budget(forRecorded: 0.1), 50)
-        XCTAssertEqual(Self.budget(forRecorded: 16), 50)
-        XCTAssertEqual(Self.budget(forRecorded: 17), 100)
-        XCTAssertEqual(Self.budget(forRecorded: 135), 450)
+        XCTAssertEqual(Self.budget(forRecorded: 0.1, multiple: 3), 50)
+        XCTAssertEqual(Self.budget(forRecorded: 16, multiple: 3), 50)
+        XCTAssertEqual(Self.budget(forRecorded: 17, multiple: 3), 100)
+        XCTAssertEqual(Self.budget(forRecorded: 135, multiple: 3), 450)
+        XCTAssertEqual(Self.budget(forRecorded: 135, multiple: 6), 850)
     }
 
     /// 3x the recorded median, rounded up to the next multiple of 50 ms (and never below 50 ms).
-    static func budget(forRecorded median: Double) -> Double {
-        max(50, (median * 3 / 50).rounded(.up) * 50)
+    static func budget(forRecorded median: Double, multiple: Double = budgetMultiple) -> Double {
+        max(50, (median * multiple / 50).rounded(.up) * 50)
     }
+
+    /// 3 on a developer Mac, 6 on the hosted CI runner (see the type's comment).
+    static let budgetMultiple: Double = ProcessInfo.processInfo.environment["MDVIEW_HOSTED_CI"] == "1" ? 6 : 3
 
     private func assertBudget(
         _ label: String,
