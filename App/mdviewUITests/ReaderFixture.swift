@@ -56,6 +56,9 @@ struct ReaderFixture {
         """,
     )
 
+    /// The Markdown the share harness hands to the share sheet. Matches `ShareHarness.defaultMarkdown`.
+    static let sharedNote = ReaderFixture(name: "Shared Note.md", markdown: "# Shared heading\n\n- [x] done")
+
     private static func screenshotSample(named name: String, key: String) throws -> ReaderFixture {
         guard let text = ProcessInfo.processInfo.environment[key], !text.isEmpty else {
             throw ReaderFixtureError.missingSample(name)

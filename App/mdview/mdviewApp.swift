@@ -5,6 +5,7 @@ struct mdviewApp: App {
     init() {
         #if DEBUG
             ScreenshotOpener.shared.arm()
+            ShareHarnessOpener.shared.arm()
         #endif
     }
 

@@ -76,7 +76,15 @@ The app icon is a single 1024 image, `App/mdview/Assets.xcassets/AppIcon.appicon
 
 To edit the activation rule, change both plists the same way. Only the Debug one carries the `public.data` clause.
 
-**When a host doesn't offer MdV.** Install a Debug build from Xcode on the device, share from that app, and tap the info button. "What was shared" lists the registered type identifiers and suggested name; Copy puts them on the pasteboard. If none of them conforms to `public.text` and none is a `public.file-url`, the Release rule can't match that host. The share-sheet UI tests (M6) drive the real extension in CI. The extension can't run in `swift test` and isn't launched locally.
+**When a host doesn't offer MdV.** Install a Debug build from Xcode on the device, share from that app, and tap the info button. "What was shared" lists the registered type identifiers and suggested name; Copy puts them on the pasteboard. If none of them conforms to `public.text` and none is a `public.file-url`, the Release rule can't match that host. The share-sheet UI tests (M6) drive the real extension in CI.
+
+### Share harness
+
+`App/mdview/Debug/ShareHarness.swift` (Debug only) presents the real share sheet with the items a chat app hands over. Set `MDVIEW_SHARE_HARNESS` to one of `text`, `textDocument` (a nameless `public.utf8-plain-text` data item, the "Text Document" case), `fileMarkdown` (`Shared Note.md`), `fileText` (`notes.txt`) or `quickLook` (a Quick Look preview of `Shared Note.md`; tap its share button). The content comes from `MDVIEW_SHARE_MARKDOWN`, default `# Shared heading` plus a task item. The app then shows one `harness.share` button.
+
+By hand on a device: Edit Scheme > Run > Arguments > Environment Variables, add `MDVIEW_SHARE_HARNESS=textDocument`, run, tap the button, choose MdV in the app row (or More). Tap the info button in the extension: the What was shared panel lists the registered type identifiers and the suggested name, and Copy puts them on the pasteboard. If MdV is missing from the sheet, those identifiers show why the Debug activation rule did not match.
+
+`App/mdviewUITests/ShareSheetTests.swift` runs one test per case in CI only. It skips with the query used when no app row exists, and fails when the row exists but MdV is not in it or under More. `fileMarkdown` also asserts an Open in / Copy to MdV action. Run `make build-tests` to check they compile; do not run them on a developer Mac. The extension can't run in `swift test` and isn't launched locally.
 
 ## Tests
 
