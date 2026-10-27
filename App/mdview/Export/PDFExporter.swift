@@ -177,7 +177,7 @@ private struct PrintStyle: StructuredText.Style {
     let inlineStyle: InlineStyle = .gitHub
     let headingStyle = AccessibleHeadingStyle()
     let paragraphStyle: StructuredText.GitHubParagraphStyle = .gitHub
-    let blockQuoteStyle: StructuredText.GitHubBlockQuoteStyle = .gitHub
+    let blockQuoteStyle = CalloutBlockQuoteStyle()
     let codeBlockStyle: StructuredText.GitHubCodeBlockStyle = .gitHub
     let listItemStyle = AccessibleListItemStyle()
     let unorderedListMarker = QuietBulletMarker()

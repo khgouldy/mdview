@@ -12,7 +12,7 @@ struct ReaderStyle: StructuredText.Style {
     let inlineStyle: InlineStyle = .gitHub
     let headingStyle = AccessibleHeadingStyle()
     let paragraphStyle: StructuredText.GitHubParagraphStyle = .gitHub
-    let blockQuoteStyle: StructuredText.GitHubBlockQuoteStyle = .gitHub
+    let blockQuoteStyle = CalloutBlockQuoteStyle()
     let codeBlockStyle = CopyableCodeBlockStyle()
     let listItemStyle = AccessibleListItemStyle()
     let unorderedListMarker = QuietBulletMarker()

@@ -4,8 +4,8 @@ import SwiftUI
 import Textual
 import UIKit
 
-/// Loads Markdown images from the document directory. Task list markers become checkboxes without touching
-/// files; anything else `ImagePolicy` rejects is refused.
+/// Loads Markdown images from the document directory. Task list markers become checkboxes and callout markers
+/// become their symbols without touching files; anything else `ImagePolicy` rejects is refused.
 struct LocalImageLoader: AttachmentLoader {
     var baseDirectory: URL?
 
@@ -22,6 +22,9 @@ struct LocalImageLoader: AttachmentLoader {
     func attachment(for url: URL, text: String) throws -> AnyAttachment {
         if let marker = TaskMarker(url: url) {
             return AnyAttachment(TaskCheckbox(marker: marker) as any Textual.Attachment)
+        }
+        if let kind = CalloutMarker.kind(of: url) {
+            return AnyAttachment(CalloutSymbol(kind: kind) as any Textual.Attachment)
         }
         guard let fileURL = resolvedFileURL(for: url), ImagePolicy.allows(fileURL) else {
             throw LoaderError.refused
