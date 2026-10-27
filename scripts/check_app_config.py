@@ -316,6 +316,72 @@ def check_app_icon(contents_text, pngs):
     return errors
 
 
+ACCENT_PATH = "App/mdview/Assets.xcassets/AccentColor.colorset/Contents.json"
+LIGHT_BACKGROUNDS = ["#FFFFFF", "#F2F2F7", "#E5E5EA"]
+DARK_BACKGROUNDS = ["#000000", "#1C1C1E", "#2C2C2E"]
+DARK_ELEVATED = "#3A3A3C"
+ACCENT_VARIANTS = {
+    (False, False): "any",
+    (True, False): "dark",
+    (False, True): "light high contrast",
+    (True, True): "dark high contrast",
+}
+
+
+def accent_component(value):
+    """A colorset component as 0...1: a float string ("0.290") or a 0xNN byte."""
+    text = str(value).strip().lower()
+    number = int(text, 16) / 255 if text.startswith("0x") else float(text)
+    if not 0 <= number <= 1:
+        raise ValueError(value)
+    return number
+
+
+def relative_luminance(rgb):
+    lin = [c / 12.92 if c <= 0.03928 else ((c + 0.055) / 1.055) ** 2.4 for c in rgb]
+    return 0.2126 * lin[0] + 0.7152 * lin[1] + 0.0722 * lin[2]
+
+
+def contrast_ratio(a, b):
+    hi, lo = sorted((relative_luminance(a), relative_luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def hex_rgb(text):
+    return tuple(int(text[i : i + 2], 16) / 255 for i in (1, 3, 5))
+
+
+def check_accent_contrast(contents_text, report=None):
+    """(j) AccentColor has any, dark, light high-contrast and dark high-contrast variants. Light
+    variants reach 4.5:1 on white and light greys; dark variants reach 4.5:1 on black and dark greys
+    up to #2C2C2E and 3:1 on #3A3A3C (WCAG 2.x). report(line) receives each ratio."""
+    where = "AccentColor.colorset/Contents.json"
+    try:
+        colors = json.loads(contents_text)["colors"]
+        variants = {}
+        for entry in colors:
+            appearances = {a["appearance"]: a["value"] for a in entry.get("appearances", [])}
+            key = (appearances.get("luminosity") == "dark", appearances.get("contrast") == "high")
+            comps = entry["color"]["components"]
+            variants[key] = tuple(accent_component(comps[c]) for c in ("red", "green", "blue"))
+    except (ValueError, KeyError, TypeError, AttributeError):
+        return [f"{where}: not a valid colorset with sRGB components"]
+    errors = []
+    for key, label in ACCENT_VARIANTS.items():
+        if key not in variants:
+            errors.append(f"{where}: missing the {label} variant")
+            continue
+        dark = key[0]
+        for background in DARK_BACKGROUNDS + [DARK_ELEVATED] if dark else LIGHT_BACKGROUNDS:
+            ratio = contrast_ratio(variants[key], hex_rgb(background))
+            need = 3.0 if background == DARK_ELEVATED else 4.5
+            if report:
+                report(f"  accent {label} on {background}: {ratio:.2f} (need {need})")
+            if ratio < need:
+                errors.append(f"{where}: {label} accent is {ratio:.2f}:1 on {background}, needs {need}")
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
@@ -326,6 +392,7 @@ CHECKS = [
     ("App/Shared is extension-safe: no UIApplication.shared", "shared"),
     ("share extension: point id, activation rules, bundle id, privacy manifest, safe APIs", "share"),
     ("app icon: any, dark and tinted 1024 PNGs, no alpha in AppIcon.png", "icon"),
+    ("accent color: dark and high-contrast variants meet WCAG contrast", "accent"),
 ]
 
 
@@ -386,6 +453,7 @@ def run():
             },
             (ROOT / SHARE_DIR / "PrivacyInfo.xcprivacy").is_file(),
         ),
+        "accent": check_accent_contrast(read_text(ACCENT_PATH) or "", print),
         "icon": check_app_icon(
             read_text(f"{ICON_DIR}/Contents.json") or "",
             {name: read_bytes(f"{ICON_DIR}/{name}") for name in ICON_FILES.values()},
@@ -591,6 +659,40 @@ def self_test():
         ("icon bad json", ("{", good_icons)),
     ]:
         assert check_app_icon(*args), f"self-test: {name} did not fail on its bad example"
+        print(f"ok: self-test {name}")
+    def accent_contents(drop=(), swap=None):
+        def entry(dark, high, rgb):
+            appearances = []
+            if dark:
+                appearances.append({"appearance": "luminosity", "value": "dark"})
+            if high:
+                appearances.append({"appearance": "contrast", "value": "high"})
+            comps = dict(zip(("red", "green", "blue"), rgb))
+            item = {"color": {"color-space": "srgb", "components": {**comps, "alpha": "1.000"}}, "idiom": "universal"}
+            if appearances:
+                item["appearances"] = appearances
+            return item
+
+        values = {
+            (False, False): ("0.180", "0.420", "0.290"),
+            (True, False): ("0x5B", "0xBF", "0x8A"),
+            (False, True): ("0x1F", "0x4A", "0x33"),
+            (True, True): ("0x7A", "0xD3", "0xA3"),
+        }
+        values.update(swap or {})
+        return json.dumps({"colors": [entry(*k, v) for k, v in values.items() if k not in drop]})
+
+    assert not check_accent_contrast(accent_contents()), "self-test: accent failed on its good example"
+    print("ok: self-test accent good")
+    for name, text in [
+        ("accent only #2E6B4A", accent_contents(drop=[(True, False), (False, True), (True, True)])),
+        ("accent no dark", accent_contents(drop=[(True, False)])),
+        ("accent no dark high contrast", accent_contents(drop=[(True, True)])),
+        ("accent dark reuses light green", accent_contents(swap={(True, False): ("0.180", "0.420", "0.290")})),
+        ("accent weak on #3A3A3C", accent_contents(swap={(True, False): ("0x2E", "0x8B", "0x5C")})),
+        ("accent bad json", "{"),
+    ]:
+        assert check_accent_contrast(text), f"self-test: {name} did not fail on its bad example"
         print(f"ok: self-test {name}")
     for name, check, bad, good in cases:
         assert check(bad), f"self-test: {name} did not fail on its bad example"

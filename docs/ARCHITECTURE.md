@@ -63,6 +63,8 @@ The product name comes from `AppName.display`.
 
 **Which type is loaded.** `SharedItemSelection.pick` ranks each attachment's registered types: `net.daringfireball.markdown` > `public.plain-text` conformers > other `public.text` > `public.file-url` > `public.data` (only with `allowsData`, which the Debug build sets). The best attachment wins, ties keep the host's order, and within an attachment ties keep the first-registered type. `SharedContent.isMarkdown(kind:suggestedName:)` then decides Rendered: the Markdown UTI always; plain text, file URLs and data when the name has a Markdown extension or none; RTF and HTML only with a Markdown extension.
 
+**Accent color.** `AccentColor.colorset` has four variants: #2E6B4A (any), #5BBF8A (dark), #1F4A33 (light, high contrast) and #7AD3A3 (dark, high contrast). `make lint` prints each WCAG contrast ratio: at least 4.5 on white and light greys, at least 4.5 on dark greys up to #2C2C2E and at least 3.0 on #3A3A3C.
+
 ## Rendered Markdown
 
 `RenderedView` (`reader.rendered`) puts Textual's `StructuredText` in a scroll view:
