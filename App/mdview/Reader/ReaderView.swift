@@ -8,8 +8,10 @@ struct ReaderView: View {
     let document: TextDocument
 
     @AppStorage("reader.mode") private var mode: ReaderMode = .rendered
-    @AppStorage("obsidian.enabled") private var obsidianEnabled = true
+    @AppStorage("obsidian.enabled") var obsidianEnabled = true
     @AppStorage("reader.math") private var mathEnabled = false
+    @AppStorage(ReadingSettings.textScaleKey) var textScale = ReadingSettings.defaultTextScale
+    @AppStorage(ReadingSettings.fontDesignKey) var fontDesign = ReaderFontDesign.system
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Environment(\.readerContext) private var readerContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
@@ -20,9 +22,9 @@ struct ReaderView: View {
     @State private var renderAnyway = false
     @State private var showsHelp = false
     @State private var headings: [OutlineHeading] = []
-    @State private var showsOutline = false
+    @State var showsOutline = false
     @State private var outlineJump: OutlineJump?
-    @State private var pdfExport = PDFExport()
+    @State var pdfExport = PDFExport()
 
     /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
     private static let findDebounce = Duration.milliseconds(150)
@@ -74,6 +76,7 @@ struct ReaderView: View {
                 }
             }
             .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
+            .focusedSceneValue(\.readerCommands, commands)
             .overlay {
                 if pdfExport.isRendering {
                     ExportProgressView()
@@ -104,8 +107,7 @@ struct ReaderView: View {
         }
     #endif
 
-    /// The searchable prompt is only a placeholder, so it disappears once the query is typed.
-    /// This line sits in the bar directly under the search field for the whole query.
+    /// The searchable prompt vanishes once the query is typed, so this line under the field shows the count.
     private var searchCount: some View {
         Text(findSummary)
             .font(.footnote.monospacedDigit())
@@ -190,8 +192,8 @@ struct ReaderView: View {
         }
     }
 
-    /// The inline navigation title is one line, which cuts a long name at the front. This wraps to two lines (three at
-    /// accessibility sizes) and cuts in the middle, so the extension survives. The label is always the full name.
+    /// Wraps to two lines (three at accessibility sizes) and cuts in the middle, so the extension survives. The label
+    /// is always the full name.
     private var titleView: some View {
         Text(fileName)
             .font(.headline)
@@ -204,7 +206,6 @@ struct ReaderView: View {
             .accessibilityShowsLargeContentViewer()
     }
 
-    /// Clears and Cancel both empty the query. The stored mode is never overwritten, so the previous view returns.
     private var searchQueryBinding: Binding<String> {
         Binding(
             get: { searchQuery },
@@ -232,7 +233,7 @@ struct ReaderView: View {
 
     /// Plain text never writes `reader.mode`. The stored choice is for Markdown documents. Large Markdown shows
     /// Source until the reader asks for Rendered.
-    private var displayedMode: ReaderMode {
+    var displayedMode: ReaderMode {
         guard showsModePicker else {
             return .source
         }
@@ -243,7 +244,7 @@ struct ReaderView: View {
     }
 
     /// For a large file the picker toggles `renderAnyway`, so one big file doesn't change the stored mode.
-    private var modeBinding: Binding<ReaderMode> {
+    var modeBinding: Binding<ReaderMode> {
         Binding(
             get: { displayedMode },
             set: { newValue in
@@ -264,7 +265,7 @@ struct ReaderView: View {
         showsModePicker && isLargeFile && !renderAnyway
     }
 
-    private var showsModePicker: Bool {
+    var showsModePicker: Bool {
         MarkdownFileTypes.isMarkdown(pathExtension: fileExtension) ?? document.allowsRenderedMode
     }
 
@@ -272,18 +273,17 @@ struct ReaderView: View {
         resolvedFileURL?.pathExtension.lowercased() ?? ""
     }
 
-    private var fileName: String {
+    var fileName: String {
         let name = readerContext?.displayName ?? resolvedFileURL?.lastPathComponent ?? ""
         return name.isEmpty ? "Document" : name
     }
 
     /// The injected context wins (screenshot runs); DocumentGroup supplies the URL otherwise.
-    private var resolvedFileURL: URL? {
+    var resolvedFileURL: URL? {
         readerContext?.fileURL ?? documentConfiguration?.fileURL
     }
 }
 
-/// What a search depends on. The text compares by storage first, so this is cheap for one document.
 /// What the outline depends on. `isWanted` is false while the reader shows Source, so a large file isn't parsed twice
 /// for a sheet nobody can open.
 private struct OutlineKey: Equatable, Sendable {
@@ -292,6 +292,7 @@ private struct OutlineKey: Equatable, Sendable {
     var isWanted: Bool
 }
 
+/// What a search depends on. The text compares by storage first, so this is cheap for one document.
 private struct FindKey: Equatable, Sendable {
     var query: String
     var text: String
@@ -362,7 +363,7 @@ extension ReaderView {
     }
 
     /// The outline jumps within the rendered view, and a one-heading document has nowhere to jump.
-    private var showsOutlineButton: Bool {
+    var showsOutlineButton: Bool {
         showsModePicker && !showsSource && headings.count >= 2
     }
 

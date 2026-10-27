@@ -58,17 +58,7 @@ struct ExportMenu: View {
     }
 
     private func printDocument() {
-        let request = request
-        Task {
-            let data = await export.data(for: request)
-            let info = UIPrintInfo.printInfo()
-            info.outputType = .general
-            info.jobName = request.name
-            let controller = UIPrintInteractionController.shared
-            controller.printInfo = info
-            controller.printingItem = data
-            controller.present(animated: true)
-        }
+        export.printDocument(request)
     }
 }
 
@@ -133,6 +123,44 @@ final class PDFExport {
     }
 }
 
+extension PDFExport {
+    /// Renders (or reuses) the PDF, then opens the system print sheet.
+    func printDocument(_ request: PDFRequest) {
+        Task {
+            let data = await self.data(for: request)
+            let info = UIPrintInfo.printInfo()
+            info.outputType = .general
+            info.jobName = request.name
+            let controller = UIPrintInteractionController.shared
+            controller.printInfo = info
+            controller.printingItem = data
+            controller.present(animated: true)
+        }
+    }
+
+    /// Renders (or reuses) the PDF, then opens the share sheet over the key window. For the keyboard shortcut, where
+    /// there is no `ShareLink` to tap. On iPad the sheet is a popover anchored at the top of the window.
+    func shareDocument(_ request: PDFRequest) {
+        Task {
+            let data = await self.data(for: request)
+            guard let url = try? PDFFile.write(data, named: request.pdfName),
+                  let window = UIApplication.shared.connectedScenes
+                      .compactMap({ $0 as? UIWindowScene }).flatMap(\.windows).first(where: \.isKeyWindow),
+                  var top = window.rootViewController
+            else {
+                return
+            }
+            while let next = top.presentedViewController {
+                top = next
+            }
+            let sheet = UIActivityViewController(activityItems: [url], applicationActivities: nil)
+            sheet.popoverPresentationController?.sourceView = window
+            sheet.popoverPresentationController?.sourceRect = CGRect(x: window.bounds.midX, y: 0, width: 1, height: 1)
+            top.present(sheet, animated: true)
+        }
+    }
+}
+
 /// The PDF as a file named `<name>.pdf`, so Files, Mail and AirDrop keep the document's name. It renders only when
 /// the share sheet's destination asks for it.
 struct PDFFile: Transferable, Sendable {
@@ -147,7 +175,7 @@ struct PDFFile: Transferable, Sendable {
     }
 
     /// Writes into a fresh folder under tmp, replacing the previous export's, so the receiver sees only the file name.
-    private static func write(_ data: Data, named name: String) throws -> URL {
+    fileprivate static func write(_ data: Data, named name: String) throws -> URL {
         let manager = FileManager.default
         let root = manager.temporaryDirectory.appending(path: "PDF Export", directoryHint: .isDirectory)
         try? manager.removeItem(at: root)

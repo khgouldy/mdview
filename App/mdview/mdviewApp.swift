@@ -23,11 +23,52 @@ struct mdviewApp: App {
         // The launch scene redraws these actions as system buttons, so they must be plain `Button`s (a `PasteButton`
         // is dropped on iOS 26) and their accessibility identifiers stay on hidden source copies. If a later iOS stops
         // showing custom actions, move them into `overlayAccessoryView`.
+        .commands {
+            ReaderCommandMenu()
+        }
         DocumentGroupLaunchScene(AppName.display) {
             PasteMarkdownButton()
             OpenFilesHelpButton()
         } background: {
             Color.accentColor.opacity(0.25)
+        }
+    }
+}
+
+/// The View menu behind the iPad keyboard shortcuts (hold ⌘ to see them). Find is left out: `.searchable` already
+/// provides ⌘F. Every item is disabled while no reader is in the active scene.
+private struct ReaderCommandMenu: Commands {
+    @FocusedValue(\.readerCommands) private var reader
+
+    var body: some Commands {
+        CommandMenu("View") {
+            Button("Rendered") { reader?.setMode(.rendered) }
+                .keyboardShortcut("1", modifiers: .command)
+                .disabled(!(reader?.canSwitchMode ?? false) || reader?.mode == .rendered)
+            Button("Source") { reader?.setMode(.source) }
+                .keyboardShortcut("2", modifiers: .command)
+                .disabled(!(reader?.canSwitchMode ?? false) || reader?.mode == .source)
+            Divider()
+            Button("Outline") { reader?.showOutline() }
+                .keyboardShortcut("o", modifiers: [.command, .shift])
+                .disabled(!(reader?.canShowOutline ?? false))
+            Divider()
+            Button("Larger Text") { reader?.stepText(1) }
+                .keyboardShortcut("+", modifiers: .command)
+                .disabled(!(reader?.canMakeTextLarger ?? false))
+            Button("Smaller Text") { reader?.stepText(-1) }
+                .keyboardShortcut("-", modifiers: .command)
+                .disabled(!(reader?.canMakeTextSmaller ?? false))
+            Button("Actual Size") { reader?.resetText() }
+                .keyboardShortcut("0", modifiers: .command)
+                .disabled(!(reader?.canResetText ?? false))
+            Divider()
+            Button("Print") { reader?.printDocument() }
+                .keyboardShortcut("p", modifiers: .command)
+                .disabled(!(reader?.canExport ?? false) || !UIPrintInteractionController.isPrintingAvailable)
+            Button("Export PDF") { reader?.exportPDF() }
+                .keyboardShortcut("e", modifiers: [.command, .shift])
+                .disabled(!(reader?.canExport ?? false))
         }
     }
 }

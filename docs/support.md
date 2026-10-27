@@ -53,6 +53,22 @@ Use the Rendered / Source control at the bottom of the screen. Source shows the 
 
 Pull down on a document to reveal the Find field and type. MdV switches to the source text, highlights the matches, and shows a count such as "2 of 7". Press Search or Return to go to the next match. Clear the field to return to your previous view.
 
+### What keyboard shortcuts are there?
+
+On iPad with a hardware keyboard, the View menu (hold ⌘ to see it) works while a document is open. The shortcuts are disabled on the launch screen.
+
+| Shortcut | Action |
+| --- | --- |
+| ⌘1 | Rendered |
+| ⌘2 | Source |
+| ⇧⌘O | Outline (rendered Markdown with two or more headings) |
+| ⌘+ | Larger text |
+| ⌘− | Smaller text |
+| ⌘0 | Actual size |
+| ⌘P | Print |
+| ⇧⌘E | Export PDF |
+| ⌘F | Find (provided by the system) |
+
 ### Why don't web images show?
 
 MdV never uses the network, so images from `http` or `https` addresses are shown as a link instead. Tap the link to open the image in Safari. Images stored next to your document (relative paths) are shown inline.
