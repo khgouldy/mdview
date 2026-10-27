@@ -38,6 +38,7 @@ MdV stores these preferences in the app's on-device settings:
 - text size (`reader.textScale`, 0.85 to 1.6)
 - column width (`reader.width`: 560, 680 or 860 points)
 - font style (`reader.fontDesign`: system, serif or mono)
+- where you stopped reading (`reader.positions`): for the 200 most recently opened files, one scroll position (a number from 0 to 1) is kept so a file reopens where you left it. Each file is identified only by a SHA-256 hash of its path, so no file name or content is stored. Pasted text and items from the Share extension have no file, so nothing is kept for them. Deleting the app removes these positions.
 
 iOS also keeps its own list of recently opened documents for the document browser. These stay on your device and are removed when you delete the app (the Recents list is managed by iOS).
 

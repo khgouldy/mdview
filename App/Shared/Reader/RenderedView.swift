@@ -13,6 +13,8 @@ struct RenderedView: View {
     var baseDirectory: URL?
     /// Set by the outline sheet (V1). Each request has its own id, so jumping to the same heading twice scrolls twice.
     var jump: OutlineJump?
+    /// The file on disk. Only a document with one has its reading position kept (not paste, not the share extension).
+    var fileURL: URL?
 
     /// Every section after the first starts with a heading, and GitHub headings ask for 24 pt above, so this is the
     /// gap Textual would leave there in one document.
@@ -20,6 +22,7 @@ struct RenderedView: View {
     private static let placeholderBytes = 2048
     /// Time for a lazy section to lay out after the first scroll, before the second one finds the heading in it.
     private static let sectionSettleDelay = Duration.milliseconds(250)
+    private static let saveDebounce = Duration.seconds(1)
 
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
@@ -27,6 +30,10 @@ struct RenderedView: View {
     @AppStorage(ReadingSettings.fontDesignKey) private var fontDesign = ReaderFontDesign.system
     @State private var prepared: PreparedDocument?
     @State private var trace = RenderTrace()
+    @State private var position = ScrollPosition()
+    @State private var metrics = ScrollMetrics()
+    @State private var restore = RestoreState.pending
+    @State private var saveTask: Task<Void, Never>?
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
@@ -47,6 +54,17 @@ struct RenderedView: View {
                 .padding(16)
                 .frame(maxWidth: .infinity, alignment: .center)
             }
+            .scrollPosition($position)
+            .onScrollGeometryChange(for: ScrollMetrics.self) { geometry in
+                ScrollMetrics(
+                    offset: geometry.contentOffset.y + geometry.contentInsets.top,
+                    content: geometry.contentSize.height,
+                    visible: geometry.visibleRect.height,
+                )
+            } action: { _, new in
+                metrics = new
+                metricsChanged()
+            }
             .onChange(of: jump) { _, request in
                 if let request, let document {
                     scroll(to: request, in: document, with: proxy)
@@ -59,6 +77,71 @@ struct RenderedView: View {
                 return
             }
             prepared = document
+            metricsChanged()
+        }
+        .onDisappear { saveTask?.cancel() }
+    }
+
+    private enum RestoreState {
+        case pending, settling, done
+    }
+
+    private struct ScrollMetrics: Equatable {
+        var offset: CGFloat = 0
+        var content: CGFloat = 0
+        var visible: CGFloat = 0
+
+        var range: CGFloat {
+            max(content - visible, 0)
+        }
+    }
+
+    private var positionStore: ReadingPositionStore {
+        ReadingPositionStore(storage: UserDefaults.standard)
+    }
+
+    /// Restores the saved position once, after the prepared document has a scrollable height; afterwards records the
+    /// position, debounced.
+    private func metricsChanged() {
+        guard let fileURL, prepared != nil else {
+            return
+        }
+        switch restore {
+        case .pending:
+            guard metrics.range > 0 else {
+                return
+            }
+            restore = .settling
+            guard let fraction = positionStore.position(for: fileURL) else {
+                restore = .done
+                return
+            }
+            position.scrollTo(y: CGFloat(fraction) * metrics.range)
+            // A lazy stack's height is an estimate until its sections are realized, so aim again once they have been.
+            if prepared?.sections.count ?? 1 > 1 {
+                Task { @MainActor in
+                    try? await Task.sleep(for: Self.sectionSettleDelay)
+                    position.scrollTo(y: CGFloat(fraction) * metrics.range)
+                    restore = .done
+                }
+            } else {
+                restore = .done
+            }
+        case .settling:
+            return
+        case .done:
+            scheduleSave(for: fileURL)
+        }
+    }
+
+    private func scheduleSave(for fileURL: URL) {
+        saveTask?.cancel()
+        saveTask = Task { @MainActor in
+            try? await Task.sleep(for: Self.saveDebounce)
+            guard !Task.isCancelled, metrics.range > 0 else {
+                return
+            }
+            positionStore.record(Double(metrics.offset / metrics.range), for: fileURL)
         }
     }
 

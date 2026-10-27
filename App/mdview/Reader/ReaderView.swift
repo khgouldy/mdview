@@ -143,6 +143,7 @@ struct ReaderView: View {
                 markdown: document.text,
                 baseDirectory: resolvedFileURL?.deletingLastPathComponent(),
                 jump: outlineJump,
+                fileURL: resolvedFileURL,
             )
             .accessibilityIdentifier("reader.rendered")
         }
