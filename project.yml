@@ -20,9 +20,9 @@ settings:
     Release:
       SWIFT_COMPILATION_MODE: wholemodule
 packages:
+  # Textual 0.5.0 with one patch (link taps). See Vendor/textual/MDVIEW_PATCH.md.
   Textual:
-    url: https://github.com/gonzalezreal/textual
-    minorVersion: "0.5.0"
+    path: Vendor/textual
   MDCore:
     path: Packages/MDCore
 targets:

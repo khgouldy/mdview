@@ -148,6 +148,6 @@ make clean
 
 `make test` uses `-destination 'generic/platform=iOS'` and `CODE_SIGNING_ALLOWED=NO`. No development team. Do not boot the iOS Simulator on a developer Mac.
 
-The app's only remote package is Textual (`.upToNextMinor(from: "0.5.0")`). `Packages/MDCore` has no dependencies. The deployment target is iOS 18.0 and `SWIFT_VERSION` is 6.
+Textual 0.5.0 is vendored as a local package at `Vendor/textual` with one patch; read `Vendor/textual/MDVIEW_PATCH.md` before upgrading it or touching link taps. Its remote dependencies are swiftui-math and swift-concurrency-extras. `Packages/MDCore` has no dependencies. The deployment target is iOS 18.0 and `SWIFT_VERSION` is 6.
 
 Change the project through `project.yml` and `make gen`. The generated `.xcodeproj` is gitignored except `Package.resolved`. Copy signing overrides live in gitignored `Config/Local.xcconfig`; `DEVELOPMENT_TEAM` stays empty. `make lint` rejects `URLSession`, `NWConnection`, `WKWebView`, and `CFNetwork` under `App/` and `Packages/`.

@@ -2,13 +2,13 @@
 
 mdview is MIT. See [LICENSE](LICENSE). Copyright (c) 2026 Kevin Gould / Par72 Labs, LLC.
 
-The app target depends on Textual 0.5.0 (`.upToNextMinor(from: "0.5.0")`). Textual links swiftui-math and swift-concurrency-extras, and it bundles Prism.js for code highlighting. Those four components ship in the app. All four are MIT.
+The app target depends on Textual 0.5.0, vendored at `Vendor/textual` (its MIT `LICENSE` kept) with one mdview patch described in `Vendor/textual/MDVIEW_PATCH.md`. Textual links swiftui-math and swift-concurrency-extras, and it bundles Prism.js for code highlighting. Those four components ship in the app. All four are MIT.
 
-`mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` pins three Swift packages. Each is MIT, which is compatible with this MIT repository. Nothing in that file is under a license outside MIT, BSD, and Apache-2.0.
+`mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved` pins two Swift packages; Textual is vendored, not pinned. Each is MIT, which is compatible with this MIT repository. Nothing in that file is under a license outside MIT, BSD, and Apache-2.0.
 
 | Package | Version | License |
 | --- | --- | --- |
-| [textual](https://github.com/gonzalezreal/textual) | 0.5.0 (`01b51875a5406eefc95f52a058cb059e7bc94dc4`) | MIT |
+| [textual](https://github.com/gonzalezreal/textual) | 0.5.0 (`01b51875a5406eefc95f52a058cb059e7bc94dc4`), vendored in `Vendor/textual` with one patch | MIT |
 | [swiftui-math](https://github.com/gonzalezreal/swiftui-math) | 0.1.0 (`0b5c2cfaaec8d6193db206f675048eeb5ce95f71`) | MIT |
 | [swift-concurrency-extras](https://github.com/pointfreeco/swift-concurrency-extras) | 1.4.3 (`8a4260f7373493435bd21194585c95b72bfdd401`) | MIT |
 

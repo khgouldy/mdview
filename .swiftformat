@@ -7,4 +7,4 @@
 --self remove
 --importgrouping testable-bottom
 --stripunusedargs closure-only
---exclude .build,.derivedData,mdview.xcodeproj,.beads,Packages/MDCore/.build
+--exclude Vendor,.build,.derivedData,mdview.xcodeproj,.beads,Packages/MDCore/.build

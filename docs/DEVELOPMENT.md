@@ -51,7 +51,7 @@ DEVELOPMENT_TEAM =
 
 ## Project layout
 
-`project.yml` is the XcodeGen spec. The app target links two packages: Textual (`https://github.com/gonzalezreal/textual`, `.upToNextMinor(from: "0.5.0")`) and the local package `Packages/MDCore`. MDCore has no dependencies. The resolved pins are committed at `mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`. The rest of the generated project is gitignored.
+`project.yml` is the XcodeGen spec. The app target links two packages: Textual 0.5.0, vendored at `Vendor/textual` with one patch (`Vendor/textual/MDVIEW_PATCH.md`), and the local package `Packages/MDCore`. MDCore has no dependencies. The resolved pins are committed at `mdview.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`. The rest of the generated project is gitignored.
 
 `App/mdview/mdviewApp.swift` is a `DocumentGroup(viewing: TextDocument.self)` scene. `ReaderView` shows Rendered Markdown (Textual) or the original source. `TextDocument` reads an imported `net.daringfireball.markdown` UTI and `public.plain-text`. Behavior, the image policy, and the MDCore types are in `docs/ARCHITECTURE.md`.
 
