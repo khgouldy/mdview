@@ -1,3 +1,4 @@
+import MDCore
 import SwiftUI
 import UIKit
 
@@ -8,6 +9,8 @@ struct SourceView: UIViewRepresentable {
     var currentMatch: Int?
 
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
+    @Environment(\.accessibilityDifferentiateWithoutColor) private var differentiateWithoutColor
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     func makeCoordinator() -> Coordinator {
         Coordinator()
@@ -33,6 +36,7 @@ struct SourceView: UIViewRepresentable {
 
     func updateUIView(_ textView: SourceTextView, context: Context) {
         _ = dynamicTypeSize
+        textView.reduceMotion = reduceMotion
         textView.isEditable = false
         textView.isSelectable = true
         textView.adjustsFontForContentSizeCategory = true
@@ -49,6 +53,7 @@ struct SourceView: UIViewRepresentable {
             fontSize: font.pointSize,
             contentSize: textView.traitCollection.preferredContentSizeCategory,
             interfaceStyle: textView.traitCollection.userInterfaceStyle,
+            differentiateWithoutColor: differentiateWithoutColor,
         )
         guard context.coordinator.signature != signature else {
             return
@@ -113,22 +118,52 @@ struct SourceView: UIViewRepresentable {
                 .foregroundColor: UIColor.label,
             ],
         )
-        for (index, range) in ranges.enumerated() {
-            if let current, index == current {
-                continue
-            }
-            result.addAttribute(.backgroundColor, value: Self.matchBackground, range: range)
-        }
-        if let current {
-            result.addAttributes(
-                [
-                    .backgroundColor: UIColor.systemYellow,
-                    .foregroundColor: UIColor.black,
-                ],
-                range: ranges[current],
-            )
+        let styles = FindHighlight.styles(
+            matchCount: ranges.count,
+            current: current,
+            differentiateWithoutColor: differentiateWithoutColor,
+        )
+        // Non-current styles first so an overlapping current match stays on top.
+        let order = ranges.indices.filter { $0 != current } + (current.map { [$0] } ?? [])
+        for index in order {
+            apply(styles[index], to: ranges[index], in: result, font: font)
         }
         return result
+    }
+
+    private func apply(
+        _ style: FindHighlight.MatchStyle,
+        to range: NSRange,
+        in result: NSMutableAttributedString,
+        font: UIFont,
+    ) {
+        switch style.fill {
+        case .soft:
+            result.addAttribute(.backgroundColor, value: Self.matchBackground, range: range)
+        case .strong:
+            result.addAttributes(
+                [.backgroundColor: UIColor.systemYellow, .foregroundColor: UIColor.black],
+                range: range,
+            )
+        }
+        switch style.underline {
+        case .none:
+            break
+        case .dotted:
+            result.addAttributes(
+                [.underlineStyle: NSUnderlineStyle.patternDot.union(.single).rawValue, .underlineColor: UIColor.label],
+                range: range,
+            )
+        case .thick:
+            result.addAttributes(
+                [.underlineStyle: NSUnderlineStyle.thick.rawValue, .underlineColor: UIColor.label],
+                range: range,
+            )
+        }
+        if style.bold {
+            let descriptor = font.fontDescriptor.withSymbolicTraits(.traitBold) ?? font.fontDescriptor
+            result.addAttribute(.font, value: UIFont(descriptor: descriptor, size: font.pointSize), range: range)
+        }
     }
 
     private static let matchBackground = UIColor.systemYellow.withAlphaComponent(0.35)
@@ -145,11 +180,14 @@ private struct SourceRenderSignature: Equatable {
     var fontSize: CGFloat
     var contentSize: UIContentSizeCategory
     var interfaceStyle: UIUserInterfaceStyle
+    var differentiateWithoutColor: Bool
 }
 
 /// Scrolls the current match once the text view has a real height. `updateUIView` often runs before that.
 final class SourceTextView: UITextView {
     var pendingScroll: NSRange?
+    /// Reduce Motion: jump to the match instead of animating the scroll.
+    var reduceMotion = false
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -158,9 +196,21 @@ final class SourceTextView: UITextView {
         }
         self.pendingScroll = nil
         // Glyphs are often not ready until after this layout pass.
-        scrollRangeToVisible(pendingScroll)
+        reveal(pendingScroll)
         Task { @MainActor [weak self] in
-            self?.scrollRangeToVisible(pendingScroll)
+            self?.reveal(pendingScroll)
         }
+    }
+
+    /// `scrollRangeToVisible` animates; under Reduce Motion set the offset directly.
+    private func reveal(_ range: NSRange) {
+        guard reduceMotion else {
+            scrollRangeToVisible(range)
+            return
+        }
+        UIView.performWithoutAnimation {
+            scrollRangeToVisible(range)
+        }
+        setContentOffset(contentOffset, animated: false)
     }
 }
