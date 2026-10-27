@@ -1,12 +1,12 @@
 # Architecture
 
-mdview is a read-only SwiftUI document app. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Product code is the app target plus `Packages/MDCore`.
+MdV is a read-only SwiftUI document app; the repo, target and module are named `mdview`. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Product code is the app target, the `mdviewShare` Share extension, and `Packages/MDCore`.
 
 ## Opening a file
 
 `mdviewApp` is a `DocumentGroup(viewing: TextDocument.self)`. There is no custom browser, recents store, or settings screen. Files, Recents, the share sheet, Open In, and iPad drag and drop come from the system document browser (`UISupportsDocumentBrowser`, `LSSupportsOpeningDocumentsInPlace`).
 
-`TextDocument` is a read-only `FileDocument`. It imports the Markdown UTI `net.daringfireball.markdown` (extensions `md`, `markdown`, `mdown`) and accepts `public.plain-text` as an alternate type. `MDCore.TextDecoding` reads the bytes as UTF-8, then UTF-16 when a BOM is present, then Windows-1252. Writing throws `fileWriteNoPermission`.
+`TextDocument` is a read-only `FileDocument`. It imports the Markdown UTI `net.daringfireball.markdown` (the extensions in `MarkdownFileTypes.markdownExtensions`) and accepts `public.plain-text` and `public.text` as alternate types. `MDCore.TextDecoding` reads the bytes as UTF-8, then UTF-16 when a BOM is present, then Windows-1252. Writing throws `fileWriteNoPermission`.
 
 The scene shows `ReaderView` with the document's text. The navigation title is the file name.
 
@@ -23,7 +23,41 @@ A non-empty Find query (`.searchable`, placement `.navigationBarDrawer`) forces 
 
 ## Source layout
 
-The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`). `App/Shared` is written for reuse by an app extension, so `make lint` fails if any file there contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
+The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug screenshot launch) and `App/Shared` (`AppName`, `Reader/RenderedView`, `SourceView`, `LocalImageLoader`, `ReaderMode`, `ReaderContext`). The `mdviewShare` extension compiles `App/mdviewShare` and the same `App/Shared`; Textual and MDCore link statically into each target (K8). Because the extension builds with `APPLICATION_EXTENSION_API_ONLY`, `make lint` fails if any file in `App/Shared` contains `UIApplication.shared`. `ReaderContext` (`fileURL`, `displayName`) is an environment value that hosts without a `DocumentGroup` inject; `ReaderView` reads it before `documentConfiguration`.
+
+## Share extension
+
+`mdviewShare` (`us.par72.mdview.share`, `com.apple.share-services`, display name `$(APP_DISPLAY_NAME)`) shows shared Markdown and text in the share sheet itself. It never opens the app: a Share extension has no supported API for that, and an App Group hand-off would need a new entitlement (K7). It has its own `PrivacyInfo.xcprivacy` (UserDefaults `CA92.1`, for reading `obsidian.enabled` in its own defaults domain) and writes no defaults.
+
+**Activation (K9).** `App/mdviewShare/Info.plist` (Release) offers MdV when exactly one attachment of exactly one item conforms to `public.text` or is a `public.file-url`:
+
+```
+SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url").@count == 1).@count == 1
+```
+
+`public.plain-text`, `public.utf8-plain-text` (a chat app's nameless "Text Document"), Markdown, RTF and HTML all conform to `public.text`. Photos, PDFs and web links don't. `Info-Debug.plist` is identical except the rule also accepts `public.data`, so a Debug build is offered for anything and its info panel shows what a host actually registered. Two matching attachments don't activate MdV, and in Debug a photo plus text counts as two. `make lint` enforces all of this (`check_share_extension`).
+
+**Flow.**
+
+1. `ShareViewController.viewDidLoad` flattens the attachments of every input item, builds a `SharedCandidate` per attachment (registered types, `suggestedName`) and calls `SharedItemSelection.pick` with `UTType` conformance. It installs `UIHostingController(rootView: SharedReaderView(state:))` at once, showing the title and a progress view.
+2. A detached task runs `SharedItemLoader.load` off the main actor: `loadFileRepresentation(for:)` (bytes copied inside the callback, size checked before reading), then `loadDataRepresentation(for:)`, then `loadItem` as `String`, `Data` or a security-scoped file `URL`. A `public.file-url` selection goes straight to `loadItem`.
+3. `SharedContent.make` refuses items over `limitBytes` (5 MB) and binary data (a NUL in the first 8 KB, unless a UTF-16 BOM leads), decodes with `TextDecoding`, and refuses whitespace-only text.
+4. `SharedReaderState.finish` moves the view from loading to the reader or a message.
+
+**Reader.** `SharedReaderView` is a `NavigationStack` titled with `SharedContent.title` ("Shared Text" for a nameless item). Markdown gets a Rendered / Source picker (`share.modePicker`) over the same `RenderedView` and `SourceView` as the app. The choice is `@State`, not `reader.mode`. Markdown over `sourceOnlyAboveBytes` (2 MB) and every non-Markdown type open in Source only. Done (`share.done`) and swiping the sheet away call `completeRequest(returningItems: [])`. Errors show the message (`share.error`) with Done still there:
+
+| Case | Message |
+| --- | --- |
+| No usable attachment, or binary bytes (a PDF file URL) | "MdV shows Markdown and text files." |
+| Empty or whitespace-only | "Nothing to show." |
+| Over 5 MB | "This is too large to show here. MdV shows shared text up to 5 MB." |
+| Every load path failed | "The shared item could not be read." |
+
+The product name comes from `AppName.display`.
+
+**What was shared.** The info button (`share.info`, in Release too) opens a panel (`share.info.panel`) that lists each attachment's registered type identifiers and suggested name, plus the loaded type, name and byte count (`share.info.bytes`). Copy (`share.info.copy`) puts the same text on the pasteboard for a support email. The panel reads only the request's own metadata and stores nothing.
+
+**Which type is loaded.** `SharedItemSelection.pick` ranks each attachment's registered types: `net.daringfireball.markdown` > `public.plain-text` conformers > other `public.text` > `public.file-url` > `public.data` (only with `allowsData`, which the Debug build sets). The best attachment wins, ties keep the host's order, and within an attachment ties keep the first-registered type. `SharedContent.isMarkdown(kind:suggestedName:)` then decides Rendered: the Markdown UTI always; plain text, file URLs and data when the name has a Markdown extension or none; RTF and HTML only with a Markdown extension.
 
 ## Rendered Markdown
 
@@ -60,5 +94,9 @@ Foundation only. No package dependencies. iOS 18 and macOS 15, so `swift test` r
 | `ImagePolicy` | `file:` URLs only |
 | `ObsidianPreprocessor` | Front matter and wikilinks |
 | `TextSearch` | Case- and diacritic-insensitive ranges, including overlaps |
+| `MarkdownFileTypes` | Markdown and plain-text extensions, `isMarkdown(pathExtension:)` |
+| `RenderPipeline` | `prepare(_:obsidian:math:)`, the one entry point for rendered text |
+| `SharedItemSelection` | Ranks a share request's attachments and types (`SharedCandidate` in, `SharedSelection` out); conformance is a closure, with a built-in table for common system types |
+| `SharedContent` | Share limits (5 MB, Source above 2 MB), binary sniff, title, Markdown decision, `SharedContentError` messages |
 
 `SourceView` is a read-only `UITextView` (`reader.source`): monospaced body scaled with `UIFontMetrics`, `adjustsFontForContentSizeCategory`, `isFindInteractionEnabled`. Find paints match ranges from `TextSearch` and scrolls the current one into view.

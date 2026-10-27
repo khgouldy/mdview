@@ -64,7 +64,7 @@ def check_privacy_manifests(manifests):
 
 
 def check_no_truepredicate(plists):
-    """(d) No Info.plist contains TRUEPREDICATE. plists: {path: text}."""
+    """(d) No plist under App/ (Info.plist, Info-Debug.plist) contains TRUEPREDICATE. plists: {path: text}."""
     return [f"{path}: contains TRUEPREDICATE" for path, text in plists.items() if "TRUEPREDICATE" in text]
 
 
@@ -147,14 +147,129 @@ def check_shared_extension_safe(files):
     return errors
 
 
+SHARE_DIR = "App/mdviewShare"
+SHARE_BUNDLE_ID = BUNDLE_PREFIX + ".share"
+SHARE_POINT = "com.apple.share-services"
+SHARE_PRINCIPAL = "$(PRODUCT_MODULE_NAME).ShareViewController"
+SHARE_DATA_CLAUSE = ' OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.data"'
+SHARE_BANNED = [
+    (re.compile(r"UIApplication\.shared"), "UIApplication.shared is unavailable in an app extension"),
+    (re.compile(r"URLSession"), "URLSession: the extension stays on-device"),
+    (re.compile(r"extensionContext\s*[?!]?\s*\.open\b"), "extensionContext.open: a Share extension cannot open the app (K7)"),
+]
+
+
+def target_block(project_yml, name):
+    """The lines under `  <name>:` in project.yml's targets, or None."""
+    lines = project_yml.splitlines()
+    for start, line in enumerate(lines):
+        if re.match(rf"^  {re.escape(name)}:\s*$", line):
+            block = []
+            for body in lines[start + 1 :]:
+                if body.strip() and not body.startswith("   ") and not body.lstrip().startswith("#"):
+                    break
+                block.append(body)
+            return "\n".join(block)
+    return None
+
+
+def yml_setting(block, key):
+    match = re.search(rf"""^\s*{re.escape(key)}\s*:\s*["']?([^"'\s#]+)["']?""", block or "", re.M)
+    return match.group(1) if match else None
+
+
+def activation_rule(plist):
+    return plist.get("NSExtension", {}).get("NSExtensionAttributes", {}).get("NSExtensionActivationRule")
+
+
+def check_share_extension(release_bytes, debug_bytes, project_yml, swift_files, privacy_present):
+    """(h) The Share extension: point id, principal class, display name, the Release rule (SUBQUERY on
+    public.text / public.file-url, no public.data, no TRUEPREDICATE), a Debug plist that differs only by
+    adding public.data, its own privacy manifest, the target settings and embed in project.yml, and no
+    UIApplication.shared / URLSession / extensionContext.open in its Swift. swift_files: {path: text}."""
+    errors = []
+    plists = {}
+    for name, data in (("Info.plist", release_bytes), ("Info-Debug.plist", debug_bytes)):
+        try:
+            plists[name] = plistlib.loads(data)
+        except Exception as exc:
+            errors.append(f"{SHARE_DIR}/{name}: unreadable plist ({exc})")
+    if len(plists) == 2:
+        release, debug = plists["Info.plist"], plists["Info-Debug.plist"]
+        extension = release.get("NSExtension", {})
+        if extension.get("NSExtensionPointIdentifier") != SHARE_POINT:
+            errors.append(f"{SHARE_DIR}/Info.plist: NSExtensionPointIdentifier must be {SHARE_POINT}")
+        if extension.get("NSExtensionPrincipalClass") != SHARE_PRINCIPAL:
+            errors.append(f"{SHARE_DIR}/Info.plist: NSExtensionPrincipalClass must be {SHARE_PRINCIPAL}")
+        if release.get("CFBundleDisplayName") != "$(APP_DISPLAY_NAME)":
+            errors.append(f"{SHARE_DIR}/Info.plist: CFBundleDisplayName must be $(APP_DISPLAY_NAME)")
+        rule = activation_rule(release)
+        debug_rule = activation_rule(debug)
+        if not isinstance(rule, str):
+            errors.append(f"{SHARE_DIR}/Info.plist: NSExtensionActivationRule must be a predicate string")
+            rule = ""
+        if not isinstance(debug_rule, str):
+            errors.append(f"{SHARE_DIR}/Info-Debug.plist: NSExtensionActivationRule must be a predicate string")
+            debug_rule = ""
+        if "TRUEPREDICATE" in rule or "TRUEPREDICATE" in debug_rule:
+            errors.append(f"{SHARE_DIR}: an activation rule contains TRUEPREDICATE")
+        if not rule.startswith("SUBQUERY("):
+            errors.append(f"{SHARE_DIR}/Info.plist: the activation rule must be a SUBQUERY")
+        for uti in ('"public.text"', '"public.file-url"'):
+            if uti not in rule:
+                errors.append(f"{SHARE_DIR}/Info.plist: the activation rule must accept {uti}")
+        if "public.data" in rule:
+            errors.append(f"{SHARE_DIR}/Info.plist: the Release activation rule must not accept public.data")
+        if SHARE_DATA_CLAUSE not in debug_rule or debug_rule.replace(SHARE_DATA_CLAUSE, "", 1) != rule:
+            errors.append(f"{SHARE_DIR}/Info-Debug.plist: the Debug rule must be the Release rule plus{SHARE_DATA_CLAUSE}")
+        stripped = []
+        for plist in (release, debug):
+            plist = copy.deepcopy(plist)
+            plist.get("NSExtension", {}).get("NSExtensionAttributes", {}).pop("NSExtensionActivationRule", None)
+            stripped.append(plist)
+        if stripped[0] != stripped[1]:
+            errors.append(f"{SHARE_DIR}: Info.plist and Info-Debug.plist differ outside NSExtensionActivationRule")
+    if not privacy_present:
+        errors.append(f"{SHARE_DIR}/PrivacyInfo.xcprivacy is missing")
+    share = target_block(project_yml, "mdviewShare")
+    app = target_block(project_yml, "mdview")
+    if share is None:
+        errors.append("project.yml: no mdviewShare target")
+    else:
+        expected = {
+            "type": "app-extension",
+            "PRODUCT_BUNDLE_IDENTIFIER": SHARE_BUNDLE_ID,
+            "APPLICATION_EXTENSION_API_ONLY": "YES",
+            "GENERATE_INFOPLIST_FILE": "NO",
+        }
+        for key, value in expected.items():
+            if yml_setting(share, key) != value:
+                errors.append(f"project.yml: mdviewShare {key} must be {value}")
+        for config, path in (("Debug", "Info-Debug.plist"), ("Release", "Info.plist")):
+            if not re.search(rf"^\s*{config}:\s*\n\s*INFOPLIST_FILE:\s*{re.escape(SHARE_DIR)}/{re.escape(path)}\s*$", share, re.M):
+                errors.append(f"project.yml: mdviewShare {config} INFOPLIST_FILE must be {SHARE_DIR}/{path}")
+        for key in ("MARKETING_VERSION", "CURRENT_PROJECT_VERSION"):
+            if yml_setting(share, key) is None or yml_setting(share, key) != yml_setting(app, key):
+                errors.append(f"project.yml: mdviewShare {key} must match the mdview app's")
+    if app is None or not re.search(r"^\s*- target: mdviewShare\s*$", app, re.M):
+        errors.append("project.yml: the mdview app must embed mdviewShare (- target: mdviewShare)")
+    for path, text in swift_files.items():
+        for number, line in enumerate(text.splitlines(), 1):
+            for pattern, why in SHARE_BANNED:
+                if pattern.search(line):
+                    errors.append(f"{path}:{number}: {why}")
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
     ("privacy manifests: no tracking, no collected data", "privacy"),
-    ("no TRUEPREDICATE in Info.plist", "predicate"),
+    ("no TRUEPREDICATE in App plists", "predicate"),
     ("display name: Info.plist, project.yml and listing.md agree", "display"),
     ("markdown types: Info.plist matches MarkdownFileTypes.swift", "types"),
     ("App/Shared is extension-safe: no UIApplication.shared", "shared"),
+    ("share extension: point id, activation rules, bundle id, privacy manifest, safe APIs", "share"),
 ]
 
 
@@ -172,6 +287,13 @@ def read_text(path):
         return None
 
 
+def read_bytes(path):
+    try:
+        return (ROOT / path).read_bytes()
+    except OSError:
+        return b""
+
+
 def run():
     tracked = tracked_files()
     team_files = {}
@@ -181,7 +303,7 @@ def run():
             team_files[path] = text
     app = [p for p in tracked if p.startswith("App/")]
     manifests = {p: (ROOT / p).read_bytes() for p in app if p.endswith("PrivacyInfo.xcprivacy")}
-    info_plists = {p: team_files.get(p, "") for p in app if p.endswith("Info.plist")}
+    info_plists = {p: team_files.get(p, "") for p in app if p.endswith(".plist")}
     results = {
         "team": check_no_team_id(team_files),
         "bundle": check_bundle_ids(team_files.get("project.yml", "")),
@@ -197,6 +319,16 @@ def run():
         ),
         "shared": check_shared_extension_safe(
             {p: text for p in tracked if p.startswith("App/Shared/") and (text := read_text(p)) is not None}
+        ),
+        "share": check_share_extension(
+            read_bytes(f"{SHARE_DIR}/Info.plist"),
+            read_bytes(f"{SHARE_DIR}/Info-Debug.plist"),
+            team_files.get("project.yml", ""),
+            {
+                str(path.relative_to(ROOT)): path.read_text(encoding="utf-8")
+                for path in sorted((ROOT / SHARE_DIR).rglob("*.swift"))
+            },
+            (ROOT / SHARE_DIR / "PrivacyInfo.xcprivacy").is_file(),
         ),
     }
     failed = False
@@ -245,6 +377,7 @@ def self_test():
             {"App/Shared/A.swift": "let x = 1", "App/mdview/B.swift": "UIApplication.shared"},
         ),
         ("truepredicate", check_no_truepredicate, {"Info.plist": "<string>TRUEPREDICATE</string>"}, {"Info.plist": "<dict/>"}),
+        ("truepredicate debug", check_no_truepredicate, {"Info-Debug.plist": "TRUEPREDICATE"}, {"Info-Debug.plist": "<dict/>"}),
     ]
     plist_ok = "<key>CFBundleDisplayName</key>\n\t<string>$(APP_DISPLAY_NAME)</string>"
     plist_bad = "<key>CFBundleDisplayName</key>\n\t<string>mdview</string>"
@@ -287,6 +420,84 @@ def self_test():
     ]:
         assert check_display_name(*bad), f"self-test: {name} did not fail on its bad example"
         assert not check_display_name(*good), f"self-test: {name} failed on its good example"
+        print(f"ok: self-test {name}")
+    share_rule = (
+        'SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registeredTypeIdentifiers '
+        'UTI-CONFORMS-TO "public.text" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url")'
+        ".@count == 1).@count == 1"
+    )
+    share_release = {
+        "CFBundleDisplayName": "$(APP_DISPLAY_NAME)",
+        "NSExtension": {
+            "NSExtensionAttributes": {"NSExtensionActivationRule": share_rule},
+            "NSExtensionPointIdentifier": SHARE_POINT,
+            "NSExtensionPrincipalClass": SHARE_PRINCIPAL,
+        },
+    }
+    share_yml = (
+        "targets:\n"
+        "  mdview:\n    type: application\n    dependencies:\n      - target: mdviewShare\n"
+        "    settings:\n      base:\n        MARKETING_VERSION: \"0.1.0\"\n        CURRENT_PROJECT_VERSION: \"1\"\n"
+        "  mdviewShare:\n    type: app-extension\n    settings:\n      base:\n"
+        "        PRODUCT_BUNDLE_IDENTIFIER: us.par72.mdview.share\n        GENERATE_INFOPLIST_FILE: NO\n"
+        "        APPLICATION_EXTENSION_API_ONLY: YES\n        MARKETING_VERSION: \"0.1.0\"\n"
+        "        CURRENT_PROJECT_VERSION: \"1\"\n      configs:\n"
+        "        Debug:\n          INFOPLIST_FILE: App/mdviewShare/Info-Debug.plist\n"
+        "        Release:\n          INFOPLIST_FILE: App/mdviewShare/Info.plist\n"
+        "  mdviewUITests:\n    type: bundle.ui-testing\n"
+    )
+    share_swift = {"App/mdviewShare/A.swift": "extensionContext?.completeRequest(returningItems: [])"}
+
+    def share_args(release=None, debug=None, yml=share_yml, swift=None, privacy=True):
+        release = copy.deepcopy(share_release) if release is None else release
+        if debug is None:
+            debug = copy.deepcopy(release)
+            attributes = debug.get("NSExtension", {}).get("NSExtensionAttributes", {})
+            if isinstance(attributes.get("NSExtensionActivationRule"), str):
+                attributes["NSExtensionActivationRule"] = attributes["NSExtensionActivationRule"].replace(
+                    '"public.file-url")', '"public.file-url"' + SHARE_DATA_CLAUSE + ")"
+                )
+        return plistlib.dumps(release), plistlib.dumps(debug), yml, share_swift if swift is None else swift, privacy
+
+    def share_release_with(mutate):
+        plist = copy.deepcopy(share_release)
+        mutate(plist)
+        return plist
+
+    def set_rule(rule):
+        return share_release_with(lambda p: p["NSExtension"]["NSExtensionAttributes"].update({"NSExtensionActivationRule": rule}))
+
+    debug_extra_key = share_release_with(lambda p: p.update({"Extra": True}))
+    debug_extra_key["NSExtension"]["NSExtensionAttributes"]["NSExtensionActivationRule"] = share_rule.replace(
+        '"public.file-url")', '"public.file-url"' + SHARE_DATA_CLAUSE + ")"
+    )
+    assert not check_share_extension(*share_args()), f"self-test: share failed on its good example: {check_share_extension(*share_args())}"
+    print("ok: self-test share good")
+    for name, args in [
+        ("share point id", share_args(share_release_with(lambda p: p["NSExtension"].update({"NSExtensionPointIdentifier": "com.apple.ui-services"})))),
+        ("share principal", share_args(share_release_with(lambda p: p["NSExtension"].update({"NSExtensionPrincipalClass": "ShareViewController"})))),
+        ("share display name", share_args(share_release_with(lambda p: p.update({"CFBundleDisplayName": "mdview"})))),
+        ("share release data", share_args(set_rule(share_rule.replace('"public.file-url")', '"public.file-url"' + SHARE_DATA_CLAUSE + ")")))),
+        ("share truepredicate", share_args(set_rule("TRUEPREDICATE"))),
+        ("share no subquery", share_args(set_rule('ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text" OR "public.file-url"'))),
+        ("share missing file-url", share_args(set_rule(share_rule.replace("public.file-url", "public.url")))),
+        ("share dictionary rule", share_args(set_rule({"NSExtensionActivationSupportsText": True}))),
+        ("share debug same rule", share_args(debug=copy.deepcopy(share_release))),
+        ("share debug other key", share_args(debug=debug_extra_key)),
+        ("share privacy", share_args(privacy=False)),
+        ("share bundle id", share_args(yml=share_yml.replace("us.par72.mdview.share", "us.par72.mdview"))),
+        ("share api only", share_args(yml=share_yml.replace("APPLICATION_EXTENSION_API_ONLY: YES", "APPLICATION_EXTENSION_API_ONLY: NO"))),
+        ("share debug plist path", share_args(yml=share_yml.replace("Info-Debug.plist", "Info.plist"))),
+        ("share version", share_args(yml=share_yml.replace('CURRENT_PROJECT_VERSION: "1"\n      configs', 'CURRENT_PROJECT_VERSION: "2"\n      configs'))),
+        ("share embed", share_args(yml=share_yml.replace("      - target: mdviewShare\n", ""))),
+        ("share no target", share_args(yml="targets:\n  mdview:\n    dependencies:\n      - target: mdviewShare\n")),
+        ("share UIApplication", share_args(swift={"App/mdviewShare/A.swift": "UIApplication.shared.open(url)"})),
+        ("share URLSession", share_args(swift={"App/mdviewShare/A.swift": "let s = URLSession.shared"})),
+        ("share open app", share_args(swift={"App/mdviewShare/A.swift": "extensionContext?.open(url)"})),
+        ("share open app forced", share_args(swift={"App/mdviewShare/A.swift": "extensionContext!.open(url)"})),
+        ("share unreadable plist", (b"not a plist",) + share_args()[1:]),
+    ]:
+        assert check_share_extension(*args), f"self-test: {name} did not fail on its bad example"
         print(f"ok: self-test {name}")
     for name, check, bad, good in cases:
         assert check(bad), f"self-test: {name} did not fail on its bad example"

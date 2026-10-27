@@ -40,6 +40,7 @@ targets:
         product: Textual
       - package: MDCore
         product: MDCore
+      - target: mdviewShare
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: us.par72.mdview
@@ -50,6 +51,40 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         CODE_SIGN_STYLE: Automatic
+    configFiles:
+      Debug: Config/Local.xcconfig
+      Release: Config/Local.xcconfig
+  # Share extension (K7, K9). No App Group. The bundle id is a target setting, so it wins over
+  # Config/Local.xcconfig, which supplies only the team. Versions must match the app's (make lint checks).
+  mdviewShare:
+    type: app-extension
+    platform: iOS
+    deploymentTarget: "18.0"
+    sources:
+      - path: App/mdviewShare
+        excludes:
+          - Info.plist
+          - Info-Debug.plist
+      - path: App/Shared
+    dependencies:
+      - package: Textual
+        product: Textual
+      - package: MDCore
+        product: MDCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: us.par72.mdview.share
+        PRODUCT_NAME: mdviewShare
+        GENERATE_INFOPLIST_FILE: NO
+        APPLICATION_EXTENSION_API_ONLY: YES
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        CODE_SIGN_STYLE: Automatic
+      configs:
+        Debug:
+          INFOPLIST_FILE: App/mdviewShare/Info-Debug.plist
+        Release:
+          INFOPLIST_FILE: App/mdviewShare/Info.plist
     configFiles:
       Debug: Config/Local.xcconfig
       Release: Config/Local.xcconfig
