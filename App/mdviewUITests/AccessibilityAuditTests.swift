@@ -124,25 +124,105 @@ final class AccessibilityAuditTests: XCTestCase {
 
     // MARK: Helpers
 
-    /// A system-owned element's issue that is safe to ignore. Matches one audit type on one named element.
+    /// A system-owned element's issue that is safe to ignore: one audit type on one system element, matched by its
+    /// label and/or a class name in the issue's description.
     private struct KnownSystemIssue {
         var type: XCUIAccessibilityAuditType
-        var elementLabel: String
+        var elementLabel: String?
+        var descriptionContains: String?
         /// Why this is not ours to fix.
         var reason: String
+
+        func matches(_ issue: XCUIAccessibilityAuditIssue) -> Bool {
+            guard issue.auditType == type else {
+                return false
+            }
+            if let elementLabel, issue.element?.label != elementLabel {
+                return false
+            }
+            if let descriptionContains, !issue.detailedDescription.contains(descriptionContains) {
+                return false
+            }
+            return true
+        }
     }
 
-    /// Empty on purpose: add an entry, with its reason, only after a CI failure names a system element.
-    private static let knownSystemIssues: [KnownSystemIssue] = []
+    /// Each entry was named by a CI audit failure (iOS 26.5 simulator).
+    private static let knownSystemIssues: [KnownSystemIssue] = [
+        KnownSystemIssue(
+            type: .textClipped,
+            elementLabel: "Find",
+            descriptionContains: "UISearchBarTextField",
+            reason: "The `.searchable` field is UIKit's UISearchBarTextField; the navigation bar drawer fixes its "
+                + "height. MdV only supplies the prompt.",
+        ),
+        KnownSystemIssue(
+            type: .contrast,
+            elementLabel: "Find",
+            descriptionContains: "UISearchBarTextField",
+            reason: "UIKit draws the search field's placeholder and fill on the bar's glass.",
+        ),
+        KnownSystemIssue(
+            type: .hitRegion,
+            elementLabel: nil,
+            descriptionContains: "_UITextFieldClearButton",
+            reason: "The search field's clear button belongs to UISearchBar, which sizes it.",
+        ),
+        KnownSystemIssue(
+            type: .dynamicType,
+            elementLabel: "Done",
+            descriptionContains: nil,
+            reason: "A toolbar Done button is a UIKit bar button item. Bar items keep a fixed size and show the "
+                + "Large Content Viewer on a long press instead of scaling.",
+        ),
+    ]
+
+    /// iOS 26 fades and blurs content that scrolls under the navigation bar and the bottom toolbar (the scroll edge
+    /// effect, about this far past each bar). The contrast audit samples those pixels, so text partly under a bar fails
+    /// though nobody reads it there. Contrast is still audited for everything clear of the bars.
+    private static let scrollEdgeEffectDepth: CGFloat = 60
+
+    private static func barRegions(in app: XCUIApplication) -> [CGRect] {
+        var regions: [CGRect] = []
+        let navigationBar = app.navigationBars.firstMatch
+        if navigationBar.exists {
+            let frame = navigationBar.frame
+            regions.append(CGRect(
+                x: 0,
+                y: 0,
+                width: .greatestFiniteMagnitude,
+                height: frame.maxY + scrollEdgeEffectDepth,
+            ))
+        }
+        let toolbar = app.toolbars.firstMatch
+        if toolbar.exists {
+            let frame = toolbar.frame
+            regions.append(CGRect(
+                x: 0,
+                y: frame.minY - scrollEdgeEffectDepth,
+                width: .greatestFiniteMagnitude,
+                height: .greatestFiniteMagnitude,
+            ))
+        }
+        return regions
+    }
+
+    private static func isContrastUnderBars(_ issue: XCUIAccessibilityAuditIssue, bars: [CGRect]) -> Bool {
+        guard issue.auditType == .contrast, let frame = issue.element?.frame, !frame.isEmpty else {
+            return false
+        }
+        return bars.contains { $0.intersects(frame) }
+    }
 
     /// Runs every audit and reports all issues at once, each with its type, description and element, so one CI run
     /// shows everything to fix instead of stopping at the first issue.
     private func audit(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
         let found = AuditFindings()
+        let bars = Self.barRegions(in: app)
         try app.performAccessibilityAudit { issue in
-            if Self.knownSystemIssues.contains(where: { known in
-                known.type == issue.auditType && known.elementLabel == issue.element?.label
-            }) {
+            let ignored = Self.knownSystemIssues.contains(where: { $0.matches(issue) })
+                || Self.isContrastUnderBars(issue, bars: bars)
+            if ignored {
                 return true
             }
             found.add(Self.describe(issue))
