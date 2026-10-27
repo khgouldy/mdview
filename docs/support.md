@@ -59,7 +59,7 @@ Open the menu (the ellipsis button) and use the reading settings: text size, col
 
 ### How do I copy a code block?
 
-Tap the copy button on the code block. The code goes to your clipboard.
+Tap the copy button (two overlapping pages) in the code block's header row; it turns into a checkmark for a moment. The code goes to your clipboard. You can also touch and hold the block and choose Copy Code.
 
 ### How do I save a PDF or print?
 
