@@ -187,8 +187,10 @@ struct RenderedView: View {
                 }
             }
         }
-        .font(.system(.body, design: fontDesign.design))
+        // Scale first, then the font: fontScale scales the font it finds in the environment and sets the result on
+        // its content, so a `.font` inside it would override the scaled font and Larger would change nothing.
         .textual.fontScale(ReadingSettings.clamped(textScale))
+        .font(.system(.body, design: fontDesign.design))
         .textual.structuredTextStyle(.reader)
         .textual.highlighterTheme(.default)
         .modifier(ReaderTextSelection())
