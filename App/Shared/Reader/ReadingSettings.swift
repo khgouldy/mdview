@@ -82,10 +82,13 @@ enum ReaderFontDesign: String, CaseIterable, Identifiable {
 }
 
 /// The reader menu's reading section: a Text submenu (Smaller, Larger, Reset), a Width picker and a Font picker.
+/// The Width picker shows only in regular width (iPad full screen or a wide split): every column width is wider than a
+/// compact-width screen, so there it would change nothing. The stored width stays as it is.
 struct ReadingSettingsMenu: View {
     @AppStorage(ReadingSettings.textScaleKey) private var textScale = ReadingSettings.defaultTextScale
     @AppStorage(ReadingSettings.widthKey) private var width = ReaderWidth.defaultValue.rawValue
     @AppStorage(ReadingSettings.fontDesignKey) private var fontDesign = ReaderFontDesign.system
+    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     var body: some View {
         Menu("Text", systemImage: "textformat.size") {
@@ -106,10 +109,12 @@ struct ReadingSettingsMenu: View {
             .accessibilityIdentifier("reader.text.reset")
         }
         .accessibilityIdentifier("reader.text")
-        Picker("Width", selection: $width) {
-            ForEach(ReaderWidth.allCases) { Text($0.title).tag($0.rawValue) }
+        if horizontalSizeClass == .regular {
+            Picker("Width", selection: $width) {
+                ForEach(ReaderWidth.allCases) { Text($0.title).tag($0.rawValue) }
+            }
+            .accessibilityIdentifier("reader.width")
         }
-        .accessibilityIdentifier("reader.width")
         Picker("Font", selection: $fontDesign) {
             ForEach(ReaderFontDesign.allCases) { Text($0.title).tag($0) }
         }

@@ -55,7 +55,7 @@ Yes. When you reopen a file, MdV scrolls back to where you left it. It keeps thi
 
 ### How do I change the text size, width or font?
 
-Open the menu (the ellipsis button) and use the reading settings: text size, column width (Narrow, Standard, Wide), and font (System, Serif, Mono). They apply on top of your system text size.
+Open the menu (the ellipsis button) and use the reading settings: text size, column width (Narrow, Standard, Wide), and font (System, Serif, Mono). They apply on top of your system text size. Column width is on iPad only: an iPhone screen is narrower than every column width, so the menu leaves it out there (and in a narrow iPad Split View or Slide Over window).
 
 ### How do I copy a code block?
 

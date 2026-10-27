@@ -1,6 +1,8 @@
+import UIKit
 import XCTest
 
-/// The reading text size (V3): Larger in the reader menu grows the rendered heading, Reset brings it back.
+/// The reading text size (V3): Larger in the reader menu grows the rendered heading, Reset brings it back. The Width
+/// picker is only in regular width, so an iPhone's reader menu has none.
 /// Runs wherever `make test-ios` runs.
 @MainActor
 final class ReadingSettingsTests: XCTestCase {
@@ -29,6 +31,23 @@ final class ReadingSettingsTests: XCTestCase {
         choose("reader.text.reset", in: app)
         XCTAssertTrue(heading.waitForExistence(timeout: 5))
         XCTAssertEqual(heading.frame.height, before, accuracy: 1)
+    }
+
+    func testWidthPickerIsHiddenOnIPhone() throws {
+        try XCTSkipUnless(UIDevice.current.userInterfaceIdiom == .phone, "Width shows in regular width (iPad)")
+        let app = ReaderLauncher.app(fixture: .sharedNote, scheme: "light")
+        app.launchArguments += ["-reader.mode", "rendered"]
+        app.launch()
+
+        let menu = app.buttons["reader.menu"]
+        XCTAssertTrue(menu.waitForExistence(timeout: 20), app.debugDescription)
+        menu.tap()
+        let text = app.descendants(matching: .any)["reader.text"].firstMatch
+        XCTAssertTrue(text.waitForExistence(timeout: 5), app.debugDescription)
+        let width = app.descendants(matching: .any).matching(
+            NSPredicate(format: "identifier == %@ OR label == %@", "reader.width", "Width"),
+        ).firstMatch
+        XCTAssertFalse(width.exists, app.debugDescription)
     }
 
     private func choose(_ identifier: String, in app: XCUIApplication) {
