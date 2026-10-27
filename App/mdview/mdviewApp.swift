@@ -13,6 +13,13 @@ struct mdviewApp: App {
             if let seed = ProcessInfo.processInfo.environment["MDVIEW_SEED_PASTEBOARD"] {
                 UIPasteboard.general.string = seed
             }
+            // UI tests start from default reading settings. A `-reader.textScale` launch argument can't do this: the
+            // argument domain outranks the app's own writes, so Larger and Reset would change nothing.
+            if ProcessInfo.processInfo.environment["MDVIEW_RESET_READING_SETTINGS"] == "1" {
+                for key in [ReadingSettings.textScaleKey, ReadingSettings.widthKey, ReadingSettings.fontDesignKey] {
+                    UserDefaults.standard.removeObject(forKey: key)
+                }
+            }
         #endif
     }
 

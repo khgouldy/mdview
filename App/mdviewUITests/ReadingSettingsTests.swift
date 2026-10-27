@@ -12,8 +12,13 @@ final class ReadingSettingsTests: XCTestCase {
     }
 
     func testLargerTwiceGrowsHeadingAndResetRestoresIt() {
-        let app = ReaderLauncher.app(fixture: .sharedNote, scheme: "light")
-        app.launchArguments += ["-reader.mode", "rendered", "-reader.textScale", "1.0"]
+        // Not `-reader.textScale 1.0`: a launch argument outranks the app's writes, so Larger would do nothing.
+        let app = ReaderLauncher.app(
+            fixture: .sharedNote,
+            scheme: "light",
+            extraEnvironment: ["MDVIEW_RESET_READING_SETTINGS": "1"],
+        )
+        app.launchArguments += ["-reader.mode", "rendered"]
         app.launch()
 
         let heading = app.descendants(matching: .any)
