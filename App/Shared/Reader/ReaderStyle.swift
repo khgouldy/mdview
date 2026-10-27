@@ -16,13 +16,13 @@ struct ReaderStyle: StructuredText.Style {
     let listItemStyle = AccessibleListItemStyle()
     let unorderedListMarker = QuietBulletMarker()
     let orderedListMarker: StructuredText.DecimalListMarker = .decimal
-    let tableStyle: StructuredText.GitHubTableStyle = .gitHub
-    let tableCellStyle: StructuredText.GitHubTableCellStyle = .gitHub
+    let tableStyle = ScrollingTableStyle()
+    let tableCellStyle = AccessibleTableCellStyle()
     let thematicBreakStyle: StructuredText.GitHubThematicBreakStyle = .gitHub
 }
 
 extension StructuredText.Style where Self == ReaderStyle {
-    /// The reader's GitHub look with VoiceOver headings, list items and bullets.
+    /// The reader's GitHub look with VoiceOver headings, list items, bullets and table cells, and scrolling tables.
     static var reader: Self {
         ReaderStyle()
     }
@@ -71,5 +71,60 @@ struct QuietBulletMarker: StructuredText.UnorderedListMarker {
     func makeBody(configuration: Configuration) -> some View {
         base.makeBody(configuration: configuration)
             .accessibilityHidden(true)
+    }
+}
+
+/// `GitHubTableStyle`'s look inside Textual's `Overflow`, so a wide table scrolls sideways instead of squeezing its
+/// columns. The table is at most 1.5 times the container's width. `Overflow` rather than a bare horizontal
+/// `ScrollView` keeps text selection working. Textual's `DynamicColor.gitHub*` is internal, so the borders and the
+/// even-row fill use system colors, which also follow dark mode and Increased Contrast.
+struct ScrollingTableStyle: StructuredText.TableStyle {
+    private static let borderWidth: CGFloat = 1
+    private static let relativeWidth: CGFloat = 1.5
+
+    func makeBody(configuration: Configuration) -> some View {
+        Overflow { state in
+            configuration.label
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: state.containerWidth.map { $0 * Self.relativeWidth }, alignment: .leading)
+                .textual.tableBackground { layout in
+                    Canvas { context, _ in
+                        for row in layout.rowIndices.dropFirst() where row.isMultiple(of: 2) {
+                            context.fill(
+                                Path(layout.rowBounds(row).integral),
+                                with: .color(Color(uiColor: .secondarySystemBackground)),
+                            )
+                        }
+                    }
+                }
+                .textual.tableOverlay { layout in
+                    Canvas { context, _ in
+                        for divider in layout.dividers() {
+                            context.fill(Path(divider), with: .color(Color(uiColor: .separator)))
+                        }
+                    }
+                }
+                .padding(Self.borderWidth)
+                .border(Color(uiColor: .separator), width: Self.borderWidth)
+                .padding(Self.borderWidth)
+        }
+        .textual.tableCellSpacing(horizontal: Self.borderWidth, vertical: Self.borderWidth)
+        .textual.blockSpacing(.init(top: 0, bottom: 16))
+    }
+}
+
+/// `GitHubTableCellStyle` as one element per cell. Row 0 is a header, and every cell says where it is, since a cell
+/// read alone has no row or column context.
+struct AccessibleTableCellStyle: StructuredText.TableCellStyle {
+    private let base: StructuredText.GitHubTableCellStyle = .gitHub
+
+    func makeBody(configuration: Configuration) -> some View {
+        base.makeBody(configuration: configuration)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(configuration.row == 0 ? .isHeader : [])
+            .accessibilityCustomContent(
+                "Position",
+                "Row \(configuration.row + 1), column \(configuration.column + 1)",
+            )
     }
 }

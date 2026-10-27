@@ -11,6 +11,7 @@ struct ReaderView: View {
     @AppStorage("obsidian.enabled") private var obsidianEnabled = true
     @Environment(\.documentConfiguration) private var documentConfiguration
     @Environment(\.readerContext) private var readerContext
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     @State private var searchQuery = ""
     @State private var currentMatch = 0
@@ -46,6 +47,9 @@ struct ReaderView: View {
                 }
             }
             .toolbar {
+                ToolbarItem(placement: .principal) {
+                    titleView
+                }
                 if showsModePicker {
                     ToolbarItem(placement: .bottomBar) {
                         modePicker
@@ -78,6 +82,8 @@ struct ReaderView: View {
         Text(findSummary)
             .font(.footnote.monospacedDigit())
             .foregroundStyle(.secondary)
+            .multilineTextAlignment(.center)
+            .fixedSize(horizontal: false, vertical: true)
             .frame(maxWidth: .infinity)
             .padding(.vertical, 4)
             .background(.bar)
@@ -144,14 +150,39 @@ struct ReaderView: View {
         return min(currentMatch, matches.count - 1)
     }
 
+    /// A segmented control can't grow with the text, so accessibility sizes switch to a menu. Smaller sizes keep the
+    /// segments and add the Large Content Viewer.
+    @ViewBuilder
     private var modePicker: some View {
-        Picker("Mode", selection: modeBinding) {
+        let picker = Picker("Mode", selection: modeBinding) {
             ForEach(ReaderMode.allCases) { item in
                 Text(item.title).tag(item)
             }
         }
-        .pickerStyle(.segmented)
-        .accessibilityIdentifier("reader.modePicker")
+        if dynamicTypeSize.isAccessibilitySize {
+            picker
+                .pickerStyle(.menu)
+                .accessibilityIdentifier("reader.modePicker")
+        } else {
+            picker
+                .pickerStyle(.segmented)
+                .accessibilityShowsLargeContentViewer()
+                .accessibilityIdentifier("reader.modePicker")
+        }
+    }
+
+    /// The inline navigation title is one line, which cuts a long name at the front. This wraps to two lines (three at
+    /// accessibility sizes) and cuts in the middle, so the extension survives. The label is always the full name.
+    private var titleView: some View {
+        Text(fileName)
+            .font(.headline)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? 3 : 2)
+            .truncationMode(.middle)
+            .multilineTextAlignment(.center)
+            .accessibilityLabel(fileName)
+            .accessibilityAddTraits(.isHeader)
+            .accessibilityIdentifier("reader.title")
+            .accessibilityShowsLargeContentViewer()
     }
 
     /// Clears and Cancel both empty the query. The stored mode is never overwritten, so the previous view returns.
