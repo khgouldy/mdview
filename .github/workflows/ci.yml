@@ -22,7 +22,8 @@ jobs:
   build-and-test:
     name: lint, device build, simulator launch
     runs-on: macos-26
-    timeout-minutes: 30
+    # The UI test step alone takes about 20 minutes on the hosted macos-26 runner.
+    timeout-minutes: 45
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -112,6 +113,9 @@ jobs:
           # The Makefile default is iPhone 16. That device is not installed on
           # the macos-26 image; use the simulator chosen above.
           MDVIEW_IOS_DESTINATION: ${{ steps.simulator.outputs.destination }}
+          # xcodebuild hands TEST_RUNNER_* to the UI test runner without the prefix. Tests that hit a limit of the
+          # hosted runner, not of the app, skip on MDVIEW_HOSTED_CI and say why.
+          TEST_RUNNER_MDVIEW_HOSTED_CI: "1"
         run: make test-ios
 
       - name: Upload xcresult
@@ -121,4 +125,6 @@ jobs:
           name: xcresult
           path: .derivedData/**/*.xcresult
           if-no-files-found: warn
+          # .derivedData is a dot directory; without this the glob matches nothing and no xcresult is kept.
+          include-hidden-files: true
           retention-days: 14

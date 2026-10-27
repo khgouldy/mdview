@@ -135,12 +135,46 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Empty on purpose: add an entry, with its reason, only after a CI failure names a system element.
     private static let knownSystemIssues: [KnownSystemIssue] = []
 
-    private func audit(_ app: XCUIApplication) throws {
+    /// Runs every audit and reports all issues at once, each with its type, description and element, so one CI run
+    /// shows everything to fix instead of stopping at the first issue.
+    private func audit(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
+        let found = AuditFindings()
         try app.performAccessibilityAudit { issue in
-            Self.knownSystemIssues.contains { known in
+            if Self.knownSystemIssues.contains(where: { known in
                 known.type == issue.auditType && known.elementLabel == issue.element?.label
+            }) {
+                return true
             }
+            found.add(Self.describe(issue))
+            return true
         }
+        if !found.lines.isEmpty {
+            XCTFail(
+                "\(found.lines.count) accessibility audit issue(s):\n" + found.lines.joined(separator: "\n"),
+                file: file,
+                line: line,
+            )
+        }
+    }
+
+    private static func describe(_ issue: XCUIAccessibilityAuditIssue) -> String {
+        let element = issue.element
+        let what = element.map { element in
+            "type \(element.elementType.rawValue), id '\(element.identifier)', label '\(element.label)', "
+                + "frame \(NSCoder.string(for: element.frame))"
+        } ?? "no element"
+        let type = auditTypeName(issue.auditType)
+        return "- \(type): \(issue.compactDescription). \(issue.detailedDescription) [\(what)]"
+    }
+
+    private static func auditTypeName(_ type: XCUIAccessibilityAuditType) -> String {
+        let names: [(XCUIAccessibilityAuditType, String)] = [
+            (.contrast, "contrast"), (.elementDetection, "elementDetection"), (.hitRegion, "hitRegion"),
+            (.sufficientElementDescription, "sufficientElementDescription"), (.dynamicType, "dynamicType"),
+            (.textClipped, "textClipped"), (.trait, "trait"),
+        ]
+        let matched = names.filter { type.contains($0.0) }.map(\.1)
+        return matched.isEmpty ? "auditType \(type.rawValue)" : matched.joined(separator: "+")
     }
 
     private func launchReader(
@@ -157,5 +191,14 @@ final class AccessibilityAuditTests: XCTestCase {
             app.debugDescription,
         )
         return app
+    }
+}
+
+/// Collects audit issue descriptions from the audit handler.
+private final class AuditFindings {
+    private(set) var lines: [String] = []
+
+    func add(_ line: String) {
+        lines.append(line)
     }
 }

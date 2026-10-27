@@ -2,6 +2,9 @@ import XCTest
 
 /// Open-to-render performance on the 20 KB fixture (docs/perf/README.md). Runs wherever `make test-ios` runs.
 ///
+/// `reader.rendered` is matched as any element type: SwiftUI exposes it as a ScrollView, so an `otherElements` query
+/// never matched and every run waited out its timeout (the 28-30 s "launch to rendered" CI failures).
+///
 /// A simulator isn't representative of a phone, so the test records the launch and the app's `open` signpost for
 /// trend reports and fails only when a launch to the first rendered screen takes longer than three times the budget.
 final class PerformanceTests: XCTestCase {
@@ -21,7 +24,7 @@ final class PerformanceTests: XCTestCase {
         measure(metrics: metrics, options: options) {
             let app = ReaderLauncher.app(fixture: fixture, scheme: "light")
             app.launch()
-            XCTAssertTrue(app.otherElements["reader.rendered"].firstMatch.waitForExistence(timeout: 15))
+            XCTAssertTrue(app.descendants(matching: .any)["reader.rendered"].firstMatch.waitForExistence(timeout: 15))
             app.terminate()
         }
     }
@@ -32,7 +35,7 @@ final class PerformanceTests: XCTestCase {
         let app = ReaderLauncher.app(fixture: fixture, scheme: "light")
         let start = ContinuousClock.now
         app.launch()
-        XCTAssertTrue(app.otherElements["reader.rendered"].firstMatch.waitForExistence(timeout: 15))
+        XCTAssertTrue(app.descendants(matching: .any)["reader.rendered"].firstMatch.waitForExistence(timeout: 15))
         let elapsed = start.duration(to: .now)
         let seconds = Double(elapsed.components.seconds) + Double(elapsed.components.attoseconds) / 1e18
         XCTAssertLessThan(seconds, Self.openBudget * 3 + Self.launchAllowance, "launch to rendered took \(seconds) s")

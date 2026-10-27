@@ -31,7 +31,14 @@ final class LargeFileTests: XCTestCase {
         XCTAssertTrue(last.exists && last.isHittable, "Section \(count) not reached after \(swipes) swipes")
     }
 
-    func testHugeFileOpensInSourceWithRenderAnyway() {
+    /// Skipped on the hosted CI runner (`MDVIEW_HOSTED_CI`, set through `TEST_RUNNER_` in ci.yml). Every XCUITest query
+    /// snapshots the whole accessibility tree, and the source text view's value is the full 2.5 MB string; on the
+    /// hosted macos-26 runner that snapshot times out ("Failed to get matching snapshots: Timed out while evaluating UI
+    /// query") on the first query, in every run. It still runs on a local simulator (`MDVIEW_ALLOW_SIMULATOR=1`).
+    func testHugeFileOpensInSourceWithRenderAnyway() throws {
+        if ProcessInfo.processInfo.environment["MDVIEW_HOSTED_CI"] == "1" {
+            throw XCTSkip("XCUITest can't snapshot a 2.5 MB text view in time on the hosted CI runner")
+        }
         let app = launch(name: "Large 2500k.md", repeating: Self.repeatCount(forBytes: 2500 * 1024))
 
         // The stored mode is Rendered (launch argument), so Source here comes from the size.

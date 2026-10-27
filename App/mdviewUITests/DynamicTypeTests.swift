@@ -28,10 +28,30 @@ final class DynamicTypeTests: XCTestCase {
         let owner = app.descendants(matching: .any).matching(NSPredicate(format: "label CONTAINS %@", "Owner"))
             .firstMatch
         XCTAssertTrue(owner.waitForExistence(timeout: 20), app.debugDescription)
-        // The header sits off screen to the right until the table is swiped.
-        for _ in 0 ..< 6 where !owner.isHittable {
-            app.swipeLeft()
+        // The header sits off screen to the right until the table is swiped. `app.swipeLeft()` drags across the middle
+        // of the screen, which at this size is body text, not the table, so first bring the header row near the middle
+        // and then drag sideways along that row, where the table's horizontal scroll view is.
+        let window = app.windows.firstMatch
+        let origin = window.coordinate(withNormalizedOffset: .zero)
+        let middleX = window.frame.width / 2
+        if abs(owner.frame.midY - window.frame.height * 0.45) > window.frame.height * 0.2 {
+            origin.withOffset(CGVector(dx: middleX, dy: owner.frame.midY))
+                .press(
+                    forDuration: 0.1,
+                    thenDragTo: origin.withOffset(CGVector(dx: middleX, dy: window.frame.height * 0.45)),
+                )
         }
-        XCTAssertTrue(owner.isHittable, "the Owner header is not reachable by swiping the table")
+        for _ in 0 ..< 6 where !owner.isHittable {
+            let rowY = owner.frame.midY
+            origin.withOffset(CGVector(dx: window.frame.width * 0.85, dy: rowY))
+                .press(
+                    forDuration: 0.1,
+                    thenDragTo: origin.withOffset(CGVector(dx: window.frame.width * 0.15, dy: rowY)),
+                )
+        }
+        XCTAssertTrue(
+            owner.isHittable,
+            "the Owner header is not reachable by swiping the table:\n\(app.debugDescription)",
+        )
     }
 }
