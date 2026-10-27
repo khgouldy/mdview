@@ -1,8 +1,15 @@
 import UIKit
+import UniformTypeIdentifiers
 import XCTest
 
-/// The code block copy button (V2): `code.copy` puts the block's source on the pasteboard and says "Copied".
+/// The code block copy button (V2): `code.copy` puts the block's source on the pasteboard and shows "Copied".
 /// Runs wherever `make test-ios` runs.
+///
+/// The test never reads the pasteboard's contents. The app wrote them, and since iOS 16 a read of another app's
+/// pasteboard contents from this runner raises the "Allow Paste" prompt and blocks the runner's main thread until
+/// someone answers. Nobody answers on CI, so `UIPasteboard.general.string` here hung the job until its 45 minute
+/// timeout (run 40545218869). `changeCount`, `hasStrings` and `contains(pasteboardTypes:)` don't read the contents
+/// and never prompt.
 @MainActor
 final class CodeBlockTests: XCTestCase {
     override nonisolated func setUpWithError() throws {
@@ -18,20 +25,19 @@ final class CodeBlockTests: XCTestCase {
         let copy = app.descendants(matching: .any)["code.copy"].firstMatch
         XCTAssertTrue(copy.waitForExistence(timeout: 20), app.debugDescription)
         XCTAssertEqual(copy.label, "Copy code")
-        UIPasteboard.general.string = ""
+        let before = UIPasteboard.general.changeCount
         copy.tap()
 
-        let copied = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@", "Copied")).firstMatch
-        XCTAssertTrue(copied.waitForExistence(timeout: 5), app.debugDescription)
+        let copied = XCTNSPredicateExpectation(predicate: NSPredicate(format: "value == %@", "Copied"), object: copy)
+        XCTAssertEqual(XCTWaiter().wait(for: [copied], timeout: 5), .completed, app.debugDescription)
+
         // The pasteboard can lag the tap by a moment.
         let deadline = Date().addingTimeInterval(5)
-        while !(UIPasteboard.general.string ?? "").contains("struct"), Date() < deadline {
+        while UIPasteboard.general.changeCount == before, Date() < deadline {
             RunLoop.current.run(until: Date().addingTimeInterval(0.1))
         }
-        XCTAssertTrue(
-            (UIPasteboard.general.string ?? "").contains("struct"),
-            "pasteboard: \(UIPasteboard.general.string ?? "nil")",
-        )
+        XCTAssertNotEqual(UIPasteboard.general.changeCount, before, "the copy button did not write the pasteboard")
+        XCTAssertTrue(UIPasteboard.general.hasStrings)
+        XCTAssertTrue(UIPasteboard.general.contains(pasteboardTypes: [UTType.plainText.identifier]))
     }
 }
