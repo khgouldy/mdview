@@ -63,7 +63,9 @@ private struct TaskCheckboxImage: View {
         Image(systemName: marker.isChecked ? "checkmark.square.fill" : "square")
             .resizable()
             .scaledToFit()
-            .foregroundStyle(marker.isChecked ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+            // Primary, not the tint: the tinted box drew "Contrast nearly passed" on "- [x] Ship" in the audit.
+            // Primary keeps full contrast in light, dark and Increased Contrast.
+            .foregroundStyle(marker.isChecked ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
             .onAppear { task?.marker = marker }
             .onDisappear {
                 if task?.marker == marker {
