@@ -76,16 +76,13 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     func testPastedReader() throws {
-        UIPasteboard.general.string = "# Pasted heading\n\nSome **pasted** text."
-        let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
-        app.launch()
+        let app = LaunchScreen.launch(pasteboard: "# Pasted heading\n\nSome **pasted** text.")
 
         guard let paste = LaunchScreen.action(LaunchScreen.pasteLabel, in: app) else {
             XCTFail("No hittable Paste button on the launch screen:\n\(app.debugDescription)")
             return
         }
-        LaunchScreen.tapPaste(paste, in: app)
+        paste.tap()
         XCTAssertTrue(app.buttons["paste.done"].waitForExistence(timeout: 10), "the pasted reader never opened")
         try audit(app)
     }

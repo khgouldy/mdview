@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 @main
 struct mdviewApp: App {
@@ -6,6 +7,12 @@ struct mdviewApp: App {
         #if DEBUG
             ScreenshotOpener.shared.arm()
             ShareHarnessOpener.shared.arm()
+            // UI tests put their paste text here so the app itself is the pasteboard's source. A paste from another
+            // app makes iOS show "Allow Paste", and while it waits the app's main thread is blocked, so XCUITest can't
+            // query the app at all (CI run 40514001894). Debug builds only.
+            if let seed = ProcessInfo.processInfo.environment["MDVIEW_SEED_PASTEBOARD"] {
+                UIPasteboard.general.string = seed
+            }
         #endif
     }
 

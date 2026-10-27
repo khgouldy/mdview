@@ -1,8 +1,7 @@
 import UIKit
 import XCTest
 
-/// Paste from the launch screen. The app reads `UIPasteboard` on the tap, so `LaunchScreen.tapPaste` answers the
-/// "Allow Paste" prompt.
+/// Paste from the launch screen. Each launch seeds the pasteboard from the app (`LaunchScreen.launch(pasteboard:)`).
 @MainActor
 final class PasteTests: XCTestCase {
     private static let markdown = """
@@ -14,21 +13,16 @@ final class PasteTests: XCTestCase {
     /// A blank paste first: nothing opens. Then real Markdown opens the pasted reader, which Done closes.
     /// The blank check only counts because the real paste afterwards proves the taps reach the control.
     func testPasteOpensReaderAndDoneCloses() throws {
-        UIPasteboard.general.string = "  \n\t "
-        let app = XCUIApplication()
-        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
-        app.launch()
-
-        let paste = try pasteButton(in: app)
-        LaunchScreen.tapPaste(paste, in: app)
+        let blank = LaunchScreen.launch(pasteboard: "  \n\t ")
+        try pasteButton(in: blank).tap()
         XCTAssertFalse(
-            pastedTitle(in: app).waitForExistence(timeout: 3),
+            pastedTitle(in: blank).waitForExistence(timeout: 3),
             "A blank paste opened the pasted reader",
         )
+        blank.terminate()
 
-        UIPasteboard.general.string = Self.markdown
-        // Find Paste again: if it sat in the More… menu, the first tap closed the menu.
-        try LaunchScreen.tapPaste(pasteButton(in: app), in: app)
+        let app = LaunchScreen.launch(pasteboard: Self.markdown)
+        try pasteButton(in: app).tap()
         XCTAssertTrue(
             pastedTitle(in: app).waitForExistence(timeout: 10),
             "Tapped Paste with Markdown on the pasteboard and no pasted reader appeared:\n\(app.debugDescription)",

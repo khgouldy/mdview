@@ -60,16 +60,14 @@ enum LaunchScreen {
         return nil
     }
 
-    /// Taps Paste and answers iOS's "Allow Paste" prompt if it appears (the app reads `UIPasteboard` on the tap).
-    static func tapPaste(_ paste: XCUIElement, in app: XCUIApplication) {
-        paste.tap()
-        let springboard = XCUIApplication(bundleIdentifier: "com.apple.springboard")
-        for host in [app, springboard] {
-            let allow = host.buttons["Allow Paste"]
-            if allow.waitForExistence(timeout: 3) {
-                allow.tap()
-                return
-            }
-        }
+    /// Launches MdV with this text on the pasteboard, put there by the app itself (`MDVIEW_SEED_PASTEBOARD`), so
+    /// tapping Paste shows no "Allow Paste" prompt. That prompt blocks the app's main thread, and XCUITest queries
+    /// on the app then time out.
+    static func launch(pasteboard text: String) -> XCUIApplication {
+        let app = XCUIApplication()
+        app.launchArguments = ["-ApplePersistenceIgnoreState", "YES"]
+        app.launchEnvironment["MDVIEW_SEED_PASTEBOARD"] = text
+        app.launch()
+        return app
     }
 }
