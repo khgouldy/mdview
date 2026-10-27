@@ -101,8 +101,35 @@ jobs:
               handle.write(f"destination={destination}\n")
           PY
 
+      # The runner image's Homebrew SwiftFormat is older (0.63 or earlier) and formats differently from 0.64, so
+      # lint disagreed with local runs. Install the release the Makefile pins (SWIFTFORMAT_VERSION), checksum-verified,
+      # ahead of the preinstalled one on PATH.
+      - name: Install pinned SwiftFormat
+        env:
+          SWIFTFORMAT_VERSION: "0.64.1"
+          SWIFTFORMAT_SHA256: 0e5762a848d738602c7a983b26812031e634d85e357db070968b9c805f253eff
+        run: |
+          set -euo pipefail
+          pinned="$(sed -n 's/^SWIFTFORMAT_VERSION = //p' Makefile)"
+          if [ "${pinned}" != "${SWIFTFORMAT_VERSION}" ]; then
+            echo "error: ci.yml pins SwiftFormat ${SWIFTFORMAT_VERSION} but the Makefile pins ${pinned}" >&2
+            exit 1
+          fi
+          dir="${RUNNER_TEMP}/swiftformat"
+          mkdir -p "${dir}"
+          curl -fsSL --retry 3 -o "${dir}/swiftformat.zip" \
+            "https://github.com/nicklockwood/SwiftFormat/releases/download/${SWIFTFORMAT_VERSION}/swiftformat.zip"
+          echo "${SWIFTFORMAT_SHA256}  ${dir}/swiftformat.zip" | shasum -a 256 -c -
+          unzip -o -q "${dir}/swiftformat.zip" -d "${dir}"
+          chmod +x "${dir}/swiftformat"
+          echo "${dir}" >> "${GITHUB_PATH}"
+          "${dir}/swiftformat" --version
+
       - name: Lint
-        run: make lint
+        run: |
+          set -euo pipefail
+          swiftformat --version
+          make lint
 
       - name: Test
         env:

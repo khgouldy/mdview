@@ -5,6 +5,9 @@ PROJECT = mdview.xcodeproj
 DERIVED_DATA = .derivedData
 RESOLVED = $(PROJECT)/project.xcworkspace/xcshareddata/swiftpm/Package.resolved
 IOS_DESTINATION = generic/platform=iOS
+# CI installs exactly this SwiftFormat (.github/workflows/ci.yml checks that the two agree). Formatting rules change
+# between releases, so a different local version can pass lint here and fail on CI, or the other way round.
+SWIFTFORMAT_VERSION = 0.64.1
 MDVIEW_IOS_DESTINATION ?= platform=iOS Simulator,name=iPhone 16
 BUILD_DIR ?= $(HOME)/GrokBot/builds/mdview
 ARCHIVE_PATH ?= $(BUILD_DIR)/mdview.xcarchive
@@ -45,6 +48,8 @@ gen: tools
 	exit $$status
 
 lint: tools
+	@v="$$(swiftformat --version)"; [ "$$v" = "$(SWIFTFORMAT_VERSION)" ] || \
+		echo "warning: swiftformat $$v here, CI pins $(SWIFTFORMAT_VERSION); lint results may differ" >&2
 	swiftformat --lint .
 	swiftlint lint --strict
 	@$(MAKE) --no-print-directory check-config
