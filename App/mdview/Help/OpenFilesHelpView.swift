@@ -3,6 +3,7 @@ import SwiftUI
 /// How to get a Markdown file into MdV. Shown from the launch screen and the reader menu.
 struct OpenFilesHelpView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.launchDismiss) private var launchDismiss
 
     var body: some View {
         NavigationStack {
@@ -46,7 +47,7 @@ struct OpenFilesHelpView: View {
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Done") { dismiss() }
+                    Button("Done") { launchDismiss.map { $0() } ?? dismiss() }
                         .accessibilityIdentifier("help.done")
                 }
             }
@@ -71,15 +72,10 @@ struct OpenFilesHelpView: View {
 
 /// Button that presents the guide; used by the launch screen.
 struct OpenFilesHelpButton: View {
-    @State private var showsHelp = false
-
     var body: some View {
         Button("How to Open Files", systemImage: "questionmark.circle") {
-            showsHelp = true
+            LaunchPresenter.present(OpenFilesHelpView(), style: .pageSheet)
         }
         .accessibilityIdentifier("launch.help")
-        .sheet(isPresented: $showsHelp) {
-            OpenFilesHelpView()
-        }
     }
 }

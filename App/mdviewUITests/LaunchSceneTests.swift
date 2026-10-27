@@ -1,7 +1,9 @@
 import XCTest
 
+@MainActor
 final class LaunchSceneTests: XCTestCase {
-    override func setUp() {
+    override nonisolated func setUpWithError() throws {
+        try super.setUpWithError()
         continueAfterFailure = false
     }
 
@@ -9,9 +11,10 @@ final class LaunchSceneTests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
 
-        let help = app.buttons["launch.help"]
-        XCTAssertTrue(help.waitForExistence(timeout: 15), app.debugDescription)
-        XCTAssertTrue(help.isHittable, "launch.help is not hittable:\n\(app.debugDescription)")
+        guard let help = LaunchScreen.action(LaunchScreen.helpLabel, in: app) else {
+            XCTFail("No hittable How to Open Files button on the launch screen:\n\(app.debugDescription)")
+            return
+        }
         help.tap()
 
         XCTAssertTrue(
@@ -22,6 +25,9 @@ final class LaunchSceneTests: XCTestCase {
         let done = app.buttons["help.done"]
         XCTAssertTrue(done.exists, app.debugDescription)
         done.tap()
-        XCTAssertTrue(help.waitForExistence(timeout: 5))
+        XCTAssertTrue(
+            LaunchScreen.isShowing(LaunchScreen.helpLabel, in: app, timeout: 5),
+            "Done did not close the guide",
+        )
     }
 }

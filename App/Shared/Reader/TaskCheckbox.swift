@@ -4,6 +4,9 @@ import Textual
 import UIKit
 
 /// A read-only task list checkbox drawn inline with the item text.
+///
+/// Textual draws attachments as `Canvas` symbols, which VoiceOver never sees, so a label here would go unread. The
+/// checkbox instead reports its marker to the enclosing list item (`ListItemTask`), whose marker slot speaks for it.
 struct TaskCheckbox: Attachment {
     var marker: TaskMarker
 
@@ -17,12 +20,7 @@ struct TaskCheckbox: Attachment {
     }
 
     var body: some View {
-        Image(systemName: marker.isChecked ? "checkmark.square.fill" : "square")
-            .resizable()
-            .scaledToFit()
-            .foregroundStyle(marker.isChecked ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
-            .accessibilityLabel(marker.label)
-            .accessibilityAddTraits(.isStaticText)
+        TaskCheckboxImage(marker: marker)
     }
 
     func sizeThatFits(_: ProposedViewSize, in environment: TextEnvironmentValues) -> CGSize {
@@ -52,5 +50,47 @@ struct TaskCheckbox: Attachment {
             to: $0,
         ) }
         return index.flatMap { categories.indices.contains($0) ? categories[$0] : nil } ?? .large
+    }
+}
+
+/// The checkbox glyph. A `Canvas` symbol still gets the environment and `onAppear`, though not preferences, so this is
+/// how the state leaves the attachment.
+private struct TaskCheckboxImage: View {
+    let marker: TaskMarker
+    @Environment(ListItemTask.self) private var task: ListItemTask?
+
+    var body: some View {
+        Image(systemName: marker.isChecked ? "checkmark.square.fill" : "square")
+            .resizable()
+            .scaledToFit()
+            // Primary, not the tint: the tinted box drew "Contrast nearly passed" on "- [x] Ship" in the audit.
+            // Primary keeps full contrast in light, dark and Increased Contrast.
+            .foregroundStyle(marker.isChecked ? AnyShapeStyle(.primary) : AnyShapeStyle(.secondary))
+            .onAppear { task?.marker = marker }
+            .onDisappear {
+                if task?.marker == marker {
+                    task?.marker = nil
+                }
+            }
+    }
+}
+
+/// The task checkbox a list item starts with, if any. `AccessibleListItemStyle` puts one in each item's environment
+/// and `TaskCheckboxImage` fills it in. A nested item has its own, so a checkbox reports to its own item.
+@MainActor @Observable
+final class ListItemTask {
+    var marker: TaskMarker?
+}
+
+/// Speaks for a task checkbox from the item's marker slot: VoiceOver reads "Not done, Draft". It draws nothing; the
+/// checkbox itself stays inline in the text.
+struct TaskStateElement: View {
+    let marker: TaskMarker
+
+    var body: some View {
+        Color.clear
+            .accessibilityElement()
+            .accessibilityLabel(marker.label)
+            .accessibilityAddTraits(.isStaticText)
     }
 }
