@@ -214,16 +214,26 @@ final class AccessibilityAuditTests: XCTestCase {
     /// Runs every audit and reports all issues at once, each with its type, description and element, so one CI run
     /// shows everything to fix instead of stopping at the first issue.
     private func audit(_ app: XCUIApplication, file: StaticString = #filePath, line: UInt = #line) throws {
-        let found = AuditFindings()
+        var found = AuditFindings()
         let bars = Self.barRegions(in: app)
-        try app.performAccessibilityAudit { issue in
-            let ignored = Self.knownSystemIssues.contains(where: { $0.matches(issue) })
-                || Self.isContrastUnderBars(issue, bars: bars)
-            if ignored {
+        let run = { (findings: AuditFindings) in
+            try app.performAccessibilityAudit { issue in
+                let ignored = Self.knownSystemIssues.contains(where: { $0.matches(issue) })
+                    || Self.isContrastUnderBars(issue, bars: bars)
+                if ignored {
+                    return true
+                }
+                findings.add(Self.describe(issue))
                 return true
             }
-            found.add(Self.describe(issue))
-            return true
+        }
+        do {
+            try run(found)
+        } catch let error as NSError where Self.isAuditTimeout(error) {
+            // "Audit failed to complete in time" (testSource in CI run 40507377953, which passed in the run before):
+            // the hosted runner was too slow, not the app. Try once more with fresh findings; a second timeout fails.
+            found = AuditFindings()
+            try run(found)
         }
         if !found.lines.isEmpty {
             XCTFail(
@@ -232,6 +242,10 @@ final class AccessibilityAuditTests: XCTestCase {
                 line: line,
             )
         }
+    }
+
+    private static func isAuditTimeout(_ error: NSError) -> Bool {
+        error.domain == "com.apple.xcode.xctest.accessibilityAudit" && error.code == -56
     }
 
     private static func describe(_ issue: XCUIAccessibilityAuditIssue) -> String {

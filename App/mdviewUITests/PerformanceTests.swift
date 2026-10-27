@@ -11,7 +11,13 @@ final class PerformanceTests: XCTestCase {
     /// Plan 3.3: a typical note reaches the first rendered screen in under 500 ms.
     private static let openBudget: TimeInterval = 0.5
     /// A launch is not part of the `open` interval, and a cold simulator launch takes a few seconds.
-    private static let launchAllowance: TimeInterval = 5
+    ///
+    /// On GitHub's hosted runner (`MDVIEW_HOSTED_CI=1`) the allowance is 10 s. There the wall clock around
+    /// `XCUIApplication.launch()` and the element query came to 9.2-9.4 s, even after a warm-up launch, while Apple's
+    /// own metrics for the same launches were 2.3 s (launch) and 0.9 s (`open`). The extra time is XCUITest on a slow
+    /// shared VM, not the app; `testOpenTypicalNote` still records the real numbers.
+    private static let launchAllowance: TimeInterval =
+        ProcessInfo.processInfo.environment["MDVIEW_HOSTED_CI"] == "1" ? 10 : 5
 
     func testOpenTypicalNote() throws {
         let fixture = try Self.fixture20k()

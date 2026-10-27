@@ -27,7 +27,8 @@ final class PasteTests: XCTestCase {
         )
 
         UIPasteboard.general.string = Self.markdown
-        LaunchScreen.tapPaste(paste, in: app)
+        // Find Paste again: if it sat in the More… menu, the first tap closed the menu.
+        try LaunchScreen.tapPaste(pasteButton(in: app), in: app)
         XCTAssertTrue(
             pastedTitle(in: app).waitForExistence(timeout: 10),
             "Tapped Paste with Markdown on the pasteboard and no pasted reader appeared:\n\(app.debugDescription)",
@@ -42,8 +43,8 @@ final class PasteTests: XCTestCase {
         let done = app.buttons["paste.done"]
         XCTAssertTrue(done.exists, "paste.done missing")
         done.tap()
-        XCTAssertNotNil(
-            LaunchScreen.action(LaunchScreen.pasteLabel, in: app, timeout: 5),
+        XCTAssertTrue(
+            LaunchScreen.isShowing(LaunchScreen.pasteLabel, in: app, timeout: 5),
             "Done did not return to the launch screen",
         )
         XCTAssertFalse(pastedTitle(in: app).exists)

@@ -25,8 +25,8 @@ final class LaunchSceneTests: XCTestCase {
         let done = app.buttons["help.done"]
         XCTAssertTrue(done.exists, app.debugDescription)
         done.tap()
-        XCTAssertNotNil(
-            LaunchScreen.action(LaunchScreen.helpLabel, in: app, timeout: 5),
+        XCTAssertTrue(
+            LaunchScreen.isShowing(LaunchScreen.helpLabel, in: app, timeout: 5),
             "Done did not close the guide",
         )
     }
