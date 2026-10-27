@@ -2,18 +2,26 @@
   import SwiftUI
 
   final class LiveTextLayoutCollection: TextLayoutCollection {
-    private(set) lazy var layouts: [any TextLayout] = makeLayouts()
+    // mdview patch (see Vendor/textual/MDVIEW_PATCH.md): origins resolve here, while the GeometryProxy is valid,
+    // and a moved layout counts as a change. Upstream kept the proxy, resolved origins lazily and compared only the
+    // anchors, so after the content moved the link and selection hit-map stayed at the old position.
+    let layouts: [any TextLayout]
 
     private let base: Text.LayoutKey.Value
-    private let geometry: GeometryProxy
+    private let origins: [CGPoint]
 
     init(base: Text.LayoutKey.Value, geometry: GeometryProxy) {
       self.base = base
-      self.geometry = geometry
+      let layouts = Self.makeLayouts(base: base, geometry: geometry)
+      self.layouts = layouts
+      self.origins = layouts.map(\.origin)
     }
 
     func isEqual(to other: any TextLayoutCollection) -> Bool {
-      base == (other as? LiveTextLayoutCollection)?.base
+      guard let other = other as? LiveTextLayoutCollection else {
+        return false
+      }
+      return base == other.base && origins == other.origins
     }
 
     func needsPositionReconciliation(with other: any TextLayoutCollection) -> Bool {
@@ -27,7 +35,10 @@
       }
     }
 
-    private func makeLayouts() -> [any TextLayout] {
+    private static func makeLayouts(
+      base: Text.LayoutKey.Value,
+      geometry: GeometryProxy
+    ) -> [any TextLayout] {
       base
         // We are only interested in text fragments
         .filter(\.layout.isTextFragment)

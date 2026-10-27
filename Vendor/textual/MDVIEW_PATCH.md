@@ -4,23 +4,22 @@ Textual 0.5.0 (https://github.com/gonzalezreal/textual, tag 0.5.0, `01b51875a540
 (`LICENSE`). Only `Sources`, `LICENSE`, `LICENSE-3rdparty.csv` and `Package.swift` are copied. `Package.swift` drops the
 `TextualTests` target and its swift-snapshot-testing dependency. Everything else is upstream except the patch below.
 
-## Patch: links open with text selection on
+## Patch: link and selection hit-testing follows the text
 
-`Sources/Textual/Internal/TextInteraction/UIKit/UITextInteractionView.swift`, `point(inside:with:)` returns `false`
-when `model.url(for:)` finds a link under the point.
+`Sources/Textual/Internal/TextInteraction/Shared/TextLayout/LiveTextLayoutCollection.swift`. `LiveTextLayoutCollection`
+resolves each text layout's origin in `init`, while the `GeometryProxy` from `overlayTextLayoutCollection` is valid,
+and `isEqual(to:)` compares those origins as well as the anchored layouts.
 
-Why: with `.textual.textSelection(.enabled)`, `UITextInteractionView` covers the text. Its link tap
-(`handleTap(_:)`) is required to wait for every `UITextInteraction` selection gesture to fail. On iOS 26, once the
-reader no longer had a `.searchable` drawer (commit 8ef4b69, native Find bar), a selection gesture claimed single
-taps, so tapping a link did nothing. With the patch, a touch on a link goes to the fragment's own SwiftUI link tap
-(`TextLinkInteraction`), the same path used when selection is off.
+Why: upstream stored the `GeometryProxy`, resolved origins lazily (first use was often a tap), and treated two
+collections with the same anchors as equal even after the text moved. `TextSelectionModel.url(for:)` then looked for
+links at stale positions. `UITextInteractionView.handleTap(_:)` found no link and only cleared the selection, so a
+tapped link did nothing. It showed up in the reader once commit 8ef4b69 (native Find bar) removed the `.searchable`
+drawer, which changed how the content settles at launch. Selection rects use the same origins, so they benefit too.
 
-Trade-off: a long press that starts on a link does not start a text selection. Selection that starts elsewhere can
-still extend across a link.
-
-Guarded by `ReaderAccessibilityTests.testLinkInHeadingStillOpens` (CI). Bisect notes: commit history around 8ef4b69.
+Bisect, experiments and CI runs: `link-bisect-notes.md` in the release notes folder, and the commit message.
+Guarded by `ReaderAccessibilityTests.testLinkInHeadingStillOpens` on CI.
 
 ## Upgrading
 
-Drop this patch only if upstream fixes link taps under selection; otherwise re-apply it to the new version and keep
+Drop this patch only if upstream resolves layout origins eagerly (or otherwise fixes link taps under selection); otherwise re-apply it to the new version and keep
 the test passing on CI.

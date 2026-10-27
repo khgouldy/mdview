@@ -49,12 +49,6 @@
     }
 
     override func point(inside point: CGPoint, with event: UIEvent?) -> Bool {
-      // mdview patch (see Vendor/textual/MDVIEW_PATCH.md): a touch on a link passes through to the fragment's
-      // own link tap (TextLinkInteraction). UITextInteraction's selection gestures can claim a single tap first,
-      // and `tapGesture` must wait for them to fail, so `handleTap(_:)` never ran and links did not open.
-      if model.url(for: point) != nil {
-        return false
-      }
       for exclusionRect in exclusionRects {
         if exclusionRect.contains(point) {
           return false
