@@ -2,9 +2,11 @@ import MDCore
 import SwiftUI
 import UIKit
 
-/// Read-only, selectable source. Find highlights matches here; the system find interaction stays on.
+/// Read-only, selectable source with the system find interaction on. A new `findRequest` opens its find bar.
+/// `matches` paints highlights; the reader no longer passes any, since the find bar highlights its own.
 struct SourceView: UIViewRepresentable {
     var text: String
+    var findRequest: FindRequest?
     var matches: [Range<String.Index>] = []
     var currentMatch: Int?
 
@@ -37,6 +39,12 @@ struct SourceView: UIViewRepresentable {
 
     func updateUIView(_ textView: SourceTextView, context: Context) {
         _ = dynamicTypeSize
+        defer {
+            if let findRequest, context.coordinator.findRequestID != findRequest.id {
+                context.coordinator.findRequestID = findRequest.id
+                textView.requestFind(query: findRequest.query)
+            }
+        }
         textView.reduceMotion = reduceMotion
         textView.isEditable = false
         textView.isSelectable = true
@@ -175,6 +183,7 @@ struct SourceView: UIViewRepresentable {
 
     final class Coordinator {
         fileprivate var signature: SourceRenderSignature?
+        fileprivate var findRequestID: UUID?
     }
 }
 
@@ -193,6 +202,37 @@ final class SourceTextView: UITextView {
     var pendingScroll: NSRange?
     /// Reduce Motion: jump to the match instead of animating the scroll.
     var reduceMotion = false
+    /// A find bar asked for before the view was in a window (Find from Rendered makes a new text view).
+    private var pendingFind: String?
+
+    /// Opens the system find bar, with `query` typed when it isn't empty.
+    func requestFind(query: String) {
+        pendingFind = query
+        presentPendingFind()
+    }
+
+    override func didMoveToWindow() {
+        super.didMoveToWindow()
+        presentPendingFind()
+    }
+
+    /// The find bar needs a window, and the text set in the same update, so it opens on the next main-actor turn.
+    private func presentPendingFind() {
+        guard window != nil, let query = pendingFind else {
+            return
+        }
+        pendingFind = nil
+        Task { @MainActor [weak self] in
+            guard let interaction = self?.findInteraction else {
+                return
+            }
+            interaction.presentFindNavigator(showingReplace: false)
+            if !query.isEmpty {
+                interaction.searchText = query
+                interaction.findNext()
+            }
+        }
+    }
 
     override func layoutSubviews() {
         super.layoutSubviews()
@@ -218,4 +258,10 @@ final class SourceTextView: UITextView {
         }
         setContentOffset(contentOffset, animated: false)
     }
+}
+
+/// Asks the source view to open its find bar. Each request is new, so asking again reopens a closed bar.
+struct FindRequest: Equatable {
+    let id = UUID()
+    var query = ""
 }

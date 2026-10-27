@@ -42,8 +42,8 @@ struct mdviewApp: App {
     }
 }
 
-/// The View menu behind the iPad keyboard shortcuts (hold ⌘ to see them). Find is left out: `.searchable` already
-/// provides ⌘F. Every item is disabled while no reader is in the active scene.
+/// The View menu behind the iPad keyboard shortcuts (hold ⌘ to see them). Find in Document (⌘F) opens the source's
+/// system find bar. Every item is disabled while no reader is in the active scene.
 private struct ReaderCommandMenu: Commands {
     @FocusedValue(\.readerCommands) private var reader
 
@@ -59,6 +59,9 @@ private struct ReaderCommandMenu: Commands {
             Button("Outline") { reader?.showOutline() }
                 .keyboardShortcut("o", modifiers: [.command, .shift])
                 .disabled(!(reader?.canShowOutline ?? false))
+            Button("Find in Document") { reader?.find() }
+                .keyboardShortcut("f", modifiers: .command)
+                .disabled(reader == nil)
             Divider()
             Button("Larger Text") { reader?.stepText(1) }
                 .keyboardShortcut("+", modifiers: .command)

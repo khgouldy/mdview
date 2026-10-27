@@ -1,7 +1,8 @@
 import SwiftUI
 
-/// The ••• menu, for every document. Markdown gets Outline, Reading, Rendering, Export and Print, and help; plain
-/// text gets the text size row and help, since the rest only changes rendered Markdown.
+/// The ••• menu, for every document. Markdown gets Outline and Find in Document, Reading, Rendering, Export and
+/// Print, and help. Plain text gets the text size row and help, since the rest only changes rendered Markdown, and
+/// finds with the bottom bar's Find button.
 extension ReaderView {
     var readerMenu: some View {
         Menu {
@@ -10,6 +11,10 @@ extension ReaderView {
                     Button("Outline", systemImage: "list.bullet.indent", action: openOutline)
                         .disabled(!canShowOutline)
                         .accessibilityIdentifier("reader.outline")
+                    Button("Find in Document", systemImage: "magnifyingglass") {
+                        startFind()
+                    }
+                    .accessibilityIdentifier("reader.findInDocument")
                 }
             }
             Section("Reading") {

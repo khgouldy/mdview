@@ -36,9 +36,13 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     func testFindActive() throws {
-        let app = launchReader(scheme: "light", query: "Draft")
-        let count = app.descendants(matching: .any)["reader.searchCount"]
-        XCTAssertTrue(count.waitForExistence(timeout: 10), app.debugDescription)
+        // Source, since a `-reader.mode` launch argument outranks the switch Find makes.
+        let app = launchReader(scheme: "light", mode: "source", query: "Draft")
+        XCTAssertTrue(
+            app.descendants(matching: .any)["reader.source"].firstMatch.waitForExistence(timeout: 20),
+            app.debugDescription,
+        )
+        XCTAssertTrue(FindBar.field(in: app).waitForExistence(timeout: 10), app.debugDescription)
         try audit(app)
     }
 

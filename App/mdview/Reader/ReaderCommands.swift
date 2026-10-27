@@ -9,6 +9,7 @@ struct ReaderCommands {
     var setMode: (ReaderMode) -> Void
     var canShowOutline: Bool
     var showOutline: () -> Void
+    var find: () -> Void
     var canMakeTextSmaller: Bool
     var canMakeTextLarger: Bool
     var canResetText: Bool
@@ -21,7 +22,7 @@ struct ReaderCommands {
 
 extension FocusedValues {
     /// Set per scene with `focusedSceneValue`, so the shortcuts work wherever focus sits in the reader's window
-    /// (the Find field included) and are disabled when no reader is in the active scene (the launch screen).
+    /// (the find bar included) and are disabled when no reader is in the active scene (the launch screen).
     @Entry var readerCommands: ReaderCommands?
 }
 
@@ -34,6 +35,7 @@ extension ReaderView {
             setMode: { modeBinding.wrappedValue = $0 },
             canShowOutline: canShowOutline,
             showOutline: openOutline,
+            find: { startFind() },
             canMakeTextSmaller: textScale > ReadingSettings.minimumTextScale,
             canMakeTextLarger: textScale < ReadingSettings.maximumTextScale,
             canResetText: textScale != ReadingSettings.defaultTextScale,

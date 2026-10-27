@@ -86,10 +86,8 @@ private struct ScreenshotSession {
     func captureFind(_ app: XCUIApplication) throws {
         XCUIDevice.shared.orientation = .portrait
         try requireReader(app, title: "Cedar Trail.md")
-        let count = app.descendants(matching: .any)["reader.searchCount"]
-        XCTAssertTrue(count.waitForExistence(timeout: 8), app.debugDescription)
-        XCTAssertTrue(count.label.contains(" of "), "search count was \(count.label)")
-        XCTAssertNotEqual(count.label, "No matches")
+        XCTAssertTrue(app.textViews["reader.source"].waitForExistence(timeout: 8), app.debugDescription)
+        XCTAssertTrue(FindBar.field(in: app).waitForExistence(timeout: 8), app.debugDescription)
         dismissSystemBanner(app)
         capture("04-find.png")
     }

@@ -2,7 +2,7 @@ import MDCore
 import SwiftUI
 
 /// Document viewer. Markdown files toggle Rendered and Source. Plain text is source only.
-/// A non-empty find query shows the source with matches highlighted, then returns to the stored mode.
+/// Find opens the system find bar on the source (the text view's `UIFindInteraction`).
 /// Markdown over 2 MB opens in Source with a "Render Anyway" bar; that choice is per document and never stored.
 struct ReaderView: View {
     let document: TextDocument
@@ -16,9 +16,7 @@ struct ReaderView: View {
     @Environment(\.readerContext) private var readerContext
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
-    @State private var searchQuery = ""
-    @State private var currentMatch = 0
-    @State private var find = FindResult()
+    @State private var findRequest: FindRequest?
     @State private var renderAnyway = false
     @State var showsHelp = false
     @State var headings: [OutlineHeading] = []
@@ -26,35 +24,23 @@ struct ReaderView: View {
     @State private var outlineJump: OutlineJump?
     @State var pdfExport = PDFExport()
 
-    /// Typing pauses this long before a search, so a 1 MB file isn't searched on every keystroke.
-    private static let findDebounce = Duration.milliseconds(150)
-
     var body: some View {
         content
             .task { PerfSignposts.beginOpen(bytes: document.text.utf8.count) }
-            .task(id: findKey) {
-                await updateFind(findKey)
-            }
             .task(id: outlineKey) {
                 await updateOutline(outlineKey)
             }
             .navigationTitle(fileName)
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(
-                text: searchQueryBinding,
-                placement: .navigationBarDrawer(displayMode: .automatic),
-                prompt: "Find",
-            )
-            .onSubmit(of: .search) {
-                advanceMatch()
-            }
             .safeAreaInset(edge: .top, spacing: 0) {
-                if isFindActive {
-                    if find.key != nil {
-                        searchCount
-                    }
-                } else if showsLargeFileBar {
+                if showsLargeFileBar {
                     largeFileBar
+                }
+            }
+            .onChange(of: showsSource) {
+                // A Source view made later (the reader switching back) must not reopen an old find bar.
+                if !showsSource {
+                    findRequest = nil
                 }
             }
             .toolbar {
@@ -69,8 +55,10 @@ struct ReaderView: View {
                         modePicker
                     }
                 }
+                ToolbarItem(placement: .bottomBar) {
+                    findButton
+                }
             }
-            .toolbarVisibility(showsModePicker ? .visible : .hidden, for: .bottomBar)
             .focusedSceneValue(\.readerCommands, commands)
             .overlay {
                 if pdfExport.isRendering {
@@ -92,29 +80,15 @@ struct ReaderView: View {
     }
 
     #if DEBUG
-        /// Screenshot runs fill Find without focusing the field, so the keyboard stays hidden.
+        /// Screenshot and audit runs open Find with a query already typed.
         private func applyScreenshotQuery() {
             let query = ProcessInfo.processInfo.environment["MDVIEW_SCREENSHOT_QUERY"] ?? ""
             guard !query.isEmpty else {
                 return
             }
-            searchQuery = query
+            startFind(query: query)
         }
     #endif
-
-    /// The searchable prompt vanishes once the query is typed, so this line under the field shows the count.
-    private var searchCount: some View {
-        Text(findSummary)
-            .font(.footnote.monospacedDigit())
-            .foregroundStyle(.secondary)
-            .multilineTextAlignment(.center)
-            .fixedSize(horizontal: false, vertical: true)
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 4)
-            .background(.bar)
-            .accessibilityIdentifier("reader.searchCount")
-            .accessibilityAddTraits(.updatesFrequently)
-    }
 
     private var largeFileBar: some View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
@@ -137,11 +111,7 @@ struct ReaderView: View {
     @ViewBuilder
     private var content: some View {
         if showsSource {
-            SourceView(
-                text: document.text,
-                matches: isFindActive ? currentMatches : [],
-                currentMatch: activeMatchIndex,
-            )
+            SourceView(text: document.text, findRequest: findRequest)
         } else {
             RenderedView(
                 markdown: document.text,
@@ -153,17 +123,8 @@ struct ReaderView: View {
         }
     }
 
-    /// Find always reads the source. Leaving find for Source keeps the same text view.
     var showsSource: Bool {
-        isFindActive || displayedMode == .source
-    }
-
-    private var activeMatchIndex: Int? {
-        let matches = currentMatches
-        guard isFindActive, !matches.isEmpty else {
-            return nil
-        }
-        return min(currentMatch, matches.count - 1)
+        displayedMode == .source
     }
 
     /// A segmented control can't grow with the text, so accessibility sizes switch to a menu. Smaller sizes keep the
@@ -199,31 +160,6 @@ struct ReaderView: View {
             .accessibilityAddTraits(.isHeader)
             .accessibilityIdentifier("reader.title")
             .accessibilityShowsLargeContentViewer()
-    }
-
-    private var searchQueryBinding: Binding<String> {
-        Binding(
-            get: { searchQuery },
-            set: { newValue in
-                if newValue != searchQuery {
-                    currentMatch = 0
-                }
-                searchQuery = newValue
-            },
-        )
-    }
-
-    private var isFindActive: Bool {
-        !searchQuery.isEmpty
-    }
-
-    private var findKey: FindKey {
-        FindKey(query: searchQuery, text: document.text)
-    }
-
-    /// The last finished search, while it is for this text. Indices into an older text would be invalid.
-    private var currentMatches: [Range<String.Index>] {
-        find.key?.text == document.text ? find.matches : []
     }
 
     /// Plain text never writes `reader.mode`. The stored choice is for Markdown documents. Large Markdown shows
@@ -287,57 +223,7 @@ private struct OutlineKey: Equatable, Sendable {
     var isWanted: Bool
 }
 
-/// What a search depends on. The text compares by storage first, so this is cheap for one document.
-private struct FindKey: Equatable, Sendable {
-    var query: String
-    var text: String
-}
-
-/// The matches for `key`, or nothing yet (`key == nil`).
-private struct FindResult {
-    var key: FindKey?
-    var matches: [Range<String.Index>] = []
-}
-
 extension ReaderView {
-    /// Clearing the query clears matches at once. Otherwise wait out the debounce, then search off the main actor.
-    /// A newer key cancels this task, so a stale search never overwrites a fresh one.
-    private func updateFind(_ key: FindKey) async {
-        guard !key.query.isEmpty else {
-            find = FindResult()
-            return
-        }
-        do {
-            try await Task.sleep(for: Self.findDebounce)
-        } catch {
-            return
-        }
-        let matches = await Task.detached(priority: .userInitiated) {
-            PerfSignposts.measure("find") { TextSearch.ranges(of: key.query, in: key.text) }
-        }.value
-        guard !Task.isCancelled else {
-            return
-        }
-        find = FindResult(key: key, matches: matches)
-    }
-
-    private var findSummary: String {
-        let total = currentMatches.count
-        guard total > 0 else {
-            return "No matches"
-        }
-        let position = min(currentMatch, total - 1) + 1
-        return "\(position) of \(total)"
-    }
-
-    private func advanceMatch() {
-        let total = currentMatches.count
-        guard total > 0 else {
-            return
-        }
-        currentMatch = (min(currentMatch, total - 1) + 1) % total
-    }
-
     private var outlineKey: OutlineKey {
         OutlineKey(text: document.text, obsidian: obsidianEnabled, isWanted: outlineIsReachable)
     }
@@ -354,5 +240,21 @@ extension ReaderView {
             return
         }
         headings = found
+    }
+
+    /// Next to the mode picker in the bottom bar, for plain text as well as Markdown.
+    private var findButton: some View {
+        Button("Find", systemImage: "magnifyingglass") {
+            startFind()
+        }
+        .accessibilityIdentifier("reader.find")
+    }
+
+    /// The system find bar works on the source text view, so Find switches a Markdown document to Source first.
+    func startFind(query: String = "") {
+        if displayedMode != .source {
+            modeBinding.wrappedValue = .source
+        }
+        findRequest = FindRequest(query: query)
     }
 }
