@@ -38,8 +38,10 @@ make open
 Regenerate the app icon (stdlib only, no network) with:
 
 ```bash
-python3 scripts/generate_app_icon.py
+make icon ICON=a   # a, b or c; default a
 ```
+
+It writes `AppIcon.png`, `AppIcon-dark.png` and `AppIcon-tinted.png` into the asset catalog. `make lint` checks the sizes, the missing alpha in `AppIcon.png` and the `Contents.json` appearances.
 
 ## License
 

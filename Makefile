@@ -1,4 +1,4 @@
-.PHONY: help tools gen lint check-config format test build-tests build-ios test-ios archive upload open clean
+.PHONY: help tools gen lint check-config icon format test build-tests build-ios test-ios archive upload open clean
 
 SCHEME = mdview
 PROJECT = mdview.xcodeproj
@@ -18,6 +18,7 @@ help:
 	@echo "  gen        Copy Config/Local.xcconfig if needed and generate the Xcode project"
 	@echo "  lint       swiftformat --lint, swiftlint (strict), then check-config"
 	@echo "  check-config  scripts/check_app_config.py (team ID, bundle IDs, privacy manifests, TRUEPREDICATE)"
+	@echo "  icon       Install icon direction ICON=a|b|c (default a) into AppIcon.appiconset: any, dark and tinted"
 	@echo "  format     Apply swiftformat and swiftlint --fix"
 	@echo "  test       swift test Packages/MDCore, then build-tests"
 	@echo "  build-tests  xcodebuild build-for-testing (app and UI tests) for generic iOS, no simulator"
@@ -50,6 +51,15 @@ lint: tools
 
 check-config:
 	python3 scripts/check_app_config.py
+
+ICON ?= a
+ICON_SET = App/mdview/Assets.xcassets/AppIcon.appiconset
+
+icon:
+	@case "$(ICON)" in a|b|c) ;; *) echo "error: ICON must be a, b or c (got '$(ICON)')" >&2; exit 1;; esac
+	python3 scripts/generate_app_icon.py --direction $(ICON) --appearance any --size 1024 --out $(ICON_SET)/AppIcon.png
+	python3 scripts/generate_app_icon.py --direction $(ICON) --appearance dark --size 1024 --out $(ICON_SET)/AppIcon-dark.png
+	python3 scripts/generate_app_icon.py --direction $(ICON) --appearance tinted --size 1024 --out $(ICON_SET)/AppIcon-tinted.png
 
 format: tools
 	swiftformat .

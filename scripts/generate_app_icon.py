@@ -22,12 +22,13 @@ import struct
 import sys
 import zlib
 from dataclasses import dataclass
+import pathlib
 from pathlib import Path
 
 CANVAS = 1024
 SS = 4  # supersampling factor per axis
 
-ROOT = Path(__file__).resolve().parents[1]
+ROOT = pathlib.Path(__file__).resolve().parents[1]
 ICON_DIR = ROOT / "docs" / "app-store" / "icon"
 
 RGB = tuple[int, int, int]
@@ -532,7 +533,7 @@ def contact_sheet() -> tuple[int, int, bytes]:
 # --------------------------------------------------------------------------- CLI
 
 
-def write_all(out_dir: Path) -> None:
+def write_all(out_dir: pathlib.Path) -> None:
     for direction in DIRECTIONS:
         for appearance in APPEARANCES:
             scene = build(direction, appearance)
@@ -553,8 +554,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--direction", choices=sorted(DIRECTIONS))
     parser.add_argument("--appearance", choices=APPEARANCES, default="any")
     parser.add_argument("--size", type=int, default=CANVAS, help="PNG size in pixels (default 1024)")
-    parser.add_argument("--out", type=Path, help="output file; .svg or .png")
-    parser.add_argument("--out-dir", type=Path, default=ICON_DIR, help="root for --all (default docs/app-store/icon)")
+    parser.add_argument("--out", type=pathlib.Path, help="output file; .svg or .png")
+    parser.add_argument("--out-dir", type=pathlib.Path, default=ICON_DIR, help="root for --all (default docs/app-store/icon)")
     args = parser.parse_args(argv)
 
     if args.all:

@@ -6,6 +6,7 @@ Prints `ok: <check>` per passing check, `error: ...` lines and exit 1 otherwise.
 """
 
 import copy
+import json
 import plistlib
 import re
 import subprocess
@@ -261,6 +262,60 @@ def check_share_extension(release_bytes, debug_bytes, project_yml, swift_files, 
     return errors
 
 
+ICON_DIR = "App/mdview/Assets.xcassets/AppIcon.appiconset"
+PNG_MAGIC = b"\x89PNG\r\n\x1a\n"
+ICON_FILES = {"any": "AppIcon.png", "dark": "AppIcon-dark.png", "tinted": "AppIcon-tinted.png"}
+ICON_APPEARANCES = {
+    "any": None,
+    "dark": [{"appearance": "luminosity", "value": "dark"}],
+    "tinted": [{"appearance": "luminosity", "value": "tinted"}],
+}
+
+
+def png_info(data):
+    """(width, height, has_alpha) from PNG bytes, or None when they are not a PNG."""
+    if len(data) < 33 or not data.startswith(PNG_MAGIC) or data[12:16] != b"IHDR":
+        return None
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    has_alpha = data[25] in (4, 6) or b"tRNS" in data
+    return width, height, has_alpha
+
+
+def check_app_icon(contents_text, pngs):
+    """(i) The AppIcon set has any, dark and tinted 1024 universal entries and three 1024 PNGs;
+    AppIcon.png has no alpha. contents_text: Contents.json text. pngs: {file name: bytes}."""
+    errors = []
+    try:
+        images = json.loads(contents_text)["images"]
+    except (ValueError, KeyError, TypeError):
+        return [f"{ICON_DIR}/Contents.json: not valid JSON with an images list"]
+    if not isinstance(images, list):
+        return [f"{ICON_DIR}/Contents.json: images must be a list"]
+    for kind, name in ICON_FILES.items():
+        entries = [i for i in images if isinstance(i, dict) and i.get("filename") == name]
+        if len(entries) != 1:
+            errors.append(f"{ICON_DIR}/Contents.json: expected exactly one entry for {name}, found {len(entries)}")
+        else:
+            entry = entries[0]
+            for key, want in (("idiom", "universal"), ("platform", "ios"), ("size", "1024x1024")):
+                if entry.get(key) != want:
+                    errors.append(f"{ICON_DIR}/Contents.json: {name} {key} must be {want}")
+            if entry.get("appearances") != ICON_APPEARANCES[kind]:
+                errors.append(f"{ICON_DIR}/Contents.json: {name} has the wrong appearances")
+        info = png_info(pngs.get(name, b""))
+        if info is None:
+            errors.append(f"{ICON_DIR}/{name}: missing or not a PNG")
+            continue
+        if info[:2] != (1024, 1024):
+            errors.append(f"{ICON_DIR}/{name}: must be 1024x1024, is {info[0]}x{info[1]}")
+        if kind == "any" and info[2]:
+            errors.append(f"{ICON_DIR}/{name}: must not have an alpha channel (App Store rejects it)")
+    if len(images) != len(ICON_FILES):
+        errors.append(f"{ICON_DIR}/Contents.json: expected {len(ICON_FILES)} images, found {len(images)}")
+    return errors
+
+
 CHECKS = [
     ("no DEVELOPMENT_TEAM in tracked files", "team"),
     ("bundle ids under " + BUNDLE_PREFIX, "bundle"),
@@ -270,6 +325,7 @@ CHECKS = [
     ("markdown types: Info.plist matches MarkdownFileTypes.swift", "types"),
     ("App/Shared is extension-safe: no UIApplication.shared", "shared"),
     ("share extension: point id, activation rules, bundle id, privacy manifest, safe APIs", "share"),
+    ("app icon: any, dark and tinted 1024 PNGs, no alpha in AppIcon.png", "icon"),
 ]
 
 
@@ -329,6 +385,10 @@ def run():
                 for path in sorted((ROOT / SHARE_DIR).rglob("*.swift"))
             },
             (ROOT / SHARE_DIR / "PrivacyInfo.xcprivacy").is_file(),
+        ),
+        "icon": check_app_icon(
+            read_text(f"{ICON_DIR}/Contents.json") or "",
+            {name: read_bytes(f"{ICON_DIR}/{name}") for name in ICON_FILES.values()},
         ),
     }
     failed = False
@@ -498,6 +558,39 @@ def self_test():
         ("share unreadable plist", (b"not a plist",) + share_args()[1:]),
     ]:
         assert check_share_extension(*args), f"self-test: {name} did not fail on its bad example"
+        print(f"ok: self-test {name}")
+    def icon_png(size=1024, color_type=2, extra=b""):
+        header = size.to_bytes(4, "big") * 2 + bytes([8, color_type, 0, 0, 0])
+        return PNG_MAGIC + b"\x00\x00\x00\x0dIHDR" + header + b"\x00\x00\x00\x00" + extra
+
+    def icon_contents(mutate=None):
+        images = []
+        for kind, name in ICON_FILES.items():
+            entry = {"filename": name, "idiom": "universal", "platform": "ios", "size": "1024x1024"}
+            if ICON_APPEARANCES[kind]:
+                entry["appearances"] = copy.deepcopy(ICON_APPEARANCES[kind])
+            images.append(entry)
+        if mutate:
+            mutate(images)
+        return json.dumps({"images": images})
+
+    good_icons = {name: icon_png(color_type=6 if kind != "any" else 2) for kind, name in ICON_FILES.items()}
+    assert not check_app_icon(icon_contents(), good_icons), "self-test: icon failed on its good example"
+    print("ok: self-test icon good")
+    for name, args in [
+        ("icon alpha", (icon_contents(), {**good_icons, "AppIcon.png": icon_png(color_type=6)})),
+        ("icon tRNS", (icon_contents(), {**good_icons, "AppIcon.png": icon_png(extra=b"tRNS")})),
+        ("icon size", (icon_contents(), {**good_icons, "AppIcon-dark.png": icon_png(512, 6)})),
+        ("icon missing file", (icon_contents(), {k: v for k, v in good_icons.items() if k != "AppIcon-tinted.png"})),
+        ("icon not png", (icon_contents(), {**good_icons, "AppIcon.png": b"nope"})),
+        ("icon no dark appearance", (icon_contents(lambda i: i[1].pop("appearances")), good_icons)),
+        ("icon wrong tinted value", (icon_contents(lambda i: i[2]["appearances"][0].update({"value": "dark"})), good_icons)),
+        ("icon any has appearance", (icon_contents(lambda i: i[0].update({"appearances": ICON_APPEARANCES["dark"]})), good_icons)),
+        ("icon wrong size key", (icon_contents(lambda i: i[0].update({"size": "512x512"})), good_icons)),
+        ("icon extra image", (icon_contents(lambda i: i.append({"idiom": "universal"})), good_icons)),
+        ("icon bad json", ("{", good_icons)),
+    ]:
+        assert check_app_icon(*args), f"self-test: {name} did not fail on its bad example"
         print(f"ok: self-test {name}")
     for name, check, bad, good in cases:
         assert check(bad), f"self-test: {name} did not fail on its bad example"
