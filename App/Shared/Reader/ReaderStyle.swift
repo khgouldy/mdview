@@ -12,7 +12,7 @@ struct ReaderStyle: StructuredText.Style {
     let headingStyle = AccessibleHeadingStyle()
     let paragraphStyle: StructuredText.GitHubParagraphStyle = .gitHub
     let blockQuoteStyle: StructuredText.GitHubBlockQuoteStyle = .gitHub
-    let codeBlockStyle: StructuredText.GitHubCodeBlockStyle = .gitHub
+    let codeBlockStyle = CopyableCodeBlockStyle()
     let listItemStyle = AccessibleListItemStyle()
     let unorderedListMarker = QuietBulletMarker()
     let orderedListMarker: StructuredText.DecimalListMarker = .decimal
