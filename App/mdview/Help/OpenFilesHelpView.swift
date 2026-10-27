@@ -19,7 +19,7 @@ struct OpenFilesHelpView: View {
                 )
                 section(
                     "Copy and paste",
-                    "Copy the text, open \(AppName.display), then tap Paste Markdown.",
+                    "Copy the text, open \(AppName.display), then tap Paste on the start screen.",
                 )
                 section(
                     "Save to Files first",
