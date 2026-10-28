@@ -24,6 +24,8 @@ struct TextSelectionInteraction: ViewModifier {
       if textSelection.allowsSelection {
         content
           .overlayTextLayoutCollection { layoutCollection in
+            // MDView patch: see Vendor/textual/MDVIEW_PATCH.md.
+            let _ = model.receiveLayoutCollection(layoutCollection)
             Color.clear
               .onChange(of: AnyTextLayoutCollection(layoutCollection), initial: true) {
                 model.setCoordinator(coordinator)

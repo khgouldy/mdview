@@ -67,6 +67,18 @@
       )
     }
 
+    // MDView patch (see Vendor/textual/MDVIEW_PATCH.md). Called from the overlay that reads the
+    // `Text.LayoutKey` preference, on every pass. `onChange(of:initial:)` there only fired for the
+    // initial, empty value in MDView's reader, so links and selection never saw the text. With no
+    // selection there is nothing to reconcile and the stored collection is not observed, so it is
+    // taken right away. With a selection, the upstream `onChange` path still does the reconciling.
+    func receiveLayoutCollection(_ layoutCollection: any TextLayoutCollection) {
+      guard _selectedRange == nil, !layoutCollection.isEqual(to: self.layoutCollection) else {
+        return
+      }
+      self.layoutCollection = layoutCollection
+    }
+
     func setCoordinator(_ coordinator: TextSelectionCoordinator?) {
       if self.coordinator === coordinator {
         return
