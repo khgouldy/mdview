@@ -43,7 +43,7 @@ final class CodeBlockTests: XCTestCase {
             XCTAssertTrue(UIPasteboard.general.contains(pasteboardTypes: [UTType.plainText.identifier]))
         }
         if ProcessInfo.processInfo.environment["MDVIEW_HOSTED_CI"] == "1" {
-            // On the hosted runner the runner, in the background behind MdV, kept seeing the old changeCount after a
+            // On the hosted runner the runner, in the background behind YAMD, kept seeing the old changeCount after a
             // copy that works on device (CI run 40568031790). Recorded as an expected failure there, not a pass.
             XCTExpectFailure("The runner's pasteboard view lags on the hosted simulator", options: .nonStrict()) {
                 checkPasteboard()

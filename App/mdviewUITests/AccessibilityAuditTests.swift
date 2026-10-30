@@ -89,7 +89,7 @@ final class AccessibilityAuditTests: XCTestCase {
     }
 
     /// The extension runs in the share sheet's remote view. This audits what the host app can reach there, and
-    /// skips when the sheet or MdV's row can't be found (`ShareSheetTests` fails on those).
+    /// skips when the sheet or YAMD's row can't be found (`ShareSheetTests` fails on those).
     func testShareExtensionReader() throws {
         let app = XCUIApplication()
         app.launchArguments = ["-AppleLanguages", "(en)", "-AppleLocale", "en_US"]
@@ -104,13 +104,13 @@ final class AccessibilityAuditTests: XCTestCase {
             throw XCTSkip("Share sheet not found (app.otherElements[\"ActivityListView\"])")
         }
         let item = app.descendants(matching: .any)
-            .matching(NSPredicate(format: "label == %@ AND elementType IN %@", "MdV", [
+            .matching(NSPredicate(format: "label == %@ AND elementType IN %@", "YAMD", [
                 XCUIElement.ElementType.button.rawValue,
                 XCUIElement.ElementType.cell.rawValue,
             ]))
             .firstMatch
         guard item.waitForExistence(timeout: 5) else {
-            throw XCTSkip("MdV is not in the visible share row; ShareSheetTests covers finding it")
+            throw XCTSkip("YAMD is not in the visible share row; ShareSheetTests covers finding it")
         }
         item.tap()
         let done = app.buttons["share.done"].waitForExistence(timeout: 20)
@@ -159,7 +159,7 @@ final class AccessibilityAuditTests: XCTestCase {
             elementLabel: "Find",
             descriptionContains: "UISearchBarTextField",
             reason: "The `.searchable` field is UIKit's UISearchBarTextField; the navigation bar drawer fixes its "
-                + "height. MdV only supplies the prompt.",
+                + "height. YAMD only supplies the prompt.",
         ),
         KnownSystemIssue(
             type: .contrast,

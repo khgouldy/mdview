@@ -4,7 +4,7 @@
     import UIKit
     import UniformTypeIdentifiers
 
-    /// Debug-only host for the share-sheet UI tests (`ShareSheetTests`) and for trying MdV's Share
+    /// Debug-only host for the share-sheet UI tests (`ShareSheetTests`) and for trying YAMD's Share
     /// extension by hand. Armed by `MDVIEW_SHARE_HARNESS=<case>`. Shows one `harness.share` button
     /// that presents the real share sheet with the shape of item a chat app would hand over.
     enum ShareHarness {

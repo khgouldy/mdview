@@ -1,6 +1,6 @@
 # Release
 
-Version 0.2.0, build 3 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
+Version 0.2.0, build 5 (`MARKETING_VERSION` and `CURRENT_PROJECT_VERSION` in `project.yml`). Bundle id `us.par72.mdview`.
 
 Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Local.xcconfig`. Do not commit it, and do not put an Apple ID or Team ID in the repo.
 
@@ -16,7 +16,7 @@ Signing happens on keving's Mac. The Team ID stays in the gitignored `Config/Loc
 
 ## App Store Connect and TestFlight
 
-1. In App Store Connect, create an iOS app named `MdV: Markdown Viewer` (20/30 characters; see `docs/app-store/listing.md`) with bundle id `us.par72.mdview`. The SKU can be `mdview`.
+1. In App Store Connect, create an iOS app named `YAMD: Yet Another MD Viewer` (27/30 characters; see `docs/app-store/listing.md`) with bundle id `us.par72.mdview`. The SKU can be `mdview`.
 2. In Xcode, scheme mdview, Any iOS Device (arm64). Product, Archive. The scheme archives with the Release configuration.
 3. In the organizer, Distribute App, App Store Connect, Upload.
 
@@ -32,7 +32,7 @@ Privacy answers for the product page: the app does not track, does not collect d
 Mark each line after the TestFlight or Xcode install. File one bead per failure.
 
 - [ ] Open a `.md` file from Files. Rendered is the default. The title is the file name.
-- [ ] From another app, share or Open In a Markdown file. MdV opens it.
+- [ ] From another app, share or Open In a Markdown file. YAMD opens it.
 - [ ] Quit, reopen, and open the same file from Recents.
 - [ ] On iPad, drag a Markdown file onto the app and it opens.
 - [ ] Dark Mode: rendered Markdown and the source view both follow the appearance.
@@ -40,12 +40,12 @@ Mark each line after the TestFlight or Xcode install. File one bead per failure.
 - [ ] Obsidian extras (reader menu) is on: a leading YAML front matter block is hidden, and `[[Note]]`, `[[Note|Alias]]`, and `[[Note#Heading]]` show as plain text. Turn it off and those are rendered as written. Source still shows the original file either way.
 - [ ] Find: tap the bottom bar's Find, Find in Document in the menu, and ⌘F on iPad. Each switches to Source and opens the system find bar; matches highlight and the arrows move between them. A plain text file has Find and the menu too.
 - [ ] A remote image (`![alt](https://…)`) is a link, not an inline image. Tap it and Safari opens. The app does not show the image bytes.
-- [ ] Grok Bot: share a message, tap MdV. It renders (the "Text Document" case). Repeat from Messages, Mail and Files.
+- [ ] Grok Bot: share a message, tap YAMD. It renders (the "Text Document" case). Repeat from Messages, Mail and Files.
 - [ ] In the share reader, the info button opens the What was shared panel with the registered types, name and byte count. Copy puts them on the pasteboard.
-- [ ] If MdV is missing from the share sheet, install a Debug build from Xcode, share again, and read the types in the What was shared panel. Debug also accepts `public.data`, so it is offered for anything.
+- [ ] If YAMD is missing from the share sheet, install a Debug build from Xcode, share again, and read the types in the What was shared panel. Debug also accepts `public.data`, so it is offered for anything.
 - [ ] Speed budgets: measure the scenarios in `docs/perf/README.md` (cold and warm open, share extension time and memory, 200 KB, 1 MB, Find on 1 MB) on an iPhone 15 Pro or newer Release build, and fill the Device results table with the median of 5.
 - [ ] The icon in light, dark and tinted: Home Screen, then Customize.
-- [ ] The Home Screen name reads `MdV`; the App Store name is `MdV: Markdown Viewer`.
+- [ ] The Home Screen name reads `YAMD`; the App Store name is `YAMD: Yet Another MD Viewer`.
 - [ ] VoiceOver: the rotor's Headings steps through a document, a table reads by row and column, and list items read as one element with no "circle".
 - [ ] Differentiate Without Color: the system find bar marks the current match by more than color.
 - [ ] Largest accessibility text size: wide tables scroll sideways and nothing is truncated.

@@ -1,6 +1,6 @@
 import SwiftUI
 
-/// How to get a Markdown file into MdV. Shown from the launch screen and the reader menu.
+/// How to get a Markdown file into YAMD. Shown from the launch screen and the reader menu.
 struct OpenFilesHelpView: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.launchDismiss) private var launchDismiss

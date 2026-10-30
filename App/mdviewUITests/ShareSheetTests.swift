@@ -1,10 +1,10 @@
 import XCTest
 
-/// Drives the real share sheet from the debug-only `ShareHarness` and checks that MdV's Share
+/// Drives the real share sheet from the debug-only `ShareHarness` and checks that YAMD's Share
 /// extension renders what a chat app would share. CI only: needs a simulator.
 final class ShareSheetTests: XCTestCase {
     private let heading = "Shared heading"
-    private let appName = "MdV"
+    private let appName = "YAMD"
 
     override func setUp() {
         continueAfterFailure = false
@@ -69,7 +69,7 @@ final class ShareSheetTests: XCTestCase {
         }
 
         if expectOpenInTarget {
-            // The harness that presents this share sheet is MdV itself, and iOS doesn't offer an app its own
+            // The harness that presents this share sheet is YAMD itself, and iOS doesn't offer an app its own
             // Open in / Copy to action, so on iOS 26 the action is missing here (CI run 40504894387). It is only
             // reachable from another app, which XCUITest can't drive. Recorded as an expected failure, not a pass.
             XCTExpectFailure("iOS hides the presenting app's own Open in action", options: .nonStrict())
@@ -114,8 +114,8 @@ final class ShareSheetTests: XCTestCase {
             .firstMatch
     }
 
-    /// Finds MdV in the app row, then under More. Fails (never skips) when the row exists
-    /// without MdV, because that means the extension's activation rule rejected the item.
+    /// Finds YAMD in the app row, then under More. Fails (never skips) when the row exists
+    /// without YAMD, because that means the extension's activation rule rejected the item.
     private func appItem(in app: XCUIApplication) throws -> XCUIElement {
         let direct = appItemQuery(in: app)
         if direct.waitForExistence(timeout: 3) {

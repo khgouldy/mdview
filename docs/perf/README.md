@@ -1,6 +1,6 @@
 # Performance
 
-How fast MdV opens a note, how that is measured, and where the numbers live.
+How fast YAMD opens a note, how that is measured, and where the numbers live.
 
 ## Budgets
 
@@ -10,7 +10,7 @@ iPhone 15 Pro or newer, release build.
 | --- | --- |
 | Cold start, from tapping a typical note (20 KB or less, about 300 lines, 3 code blocks) to the first rendered screen | **under 500 ms** |
 | Warm open of the same note | under 250 ms |
-| Share extension, from tapping MdV in the share sheet to the first rendered screen | **under 400 ms**, resident memory under 60 MB |
+| Share extension, from tapping YAMD in the share sheet to the first rendered screen | **under 400 ms**, resident memory under 60 MB |
 | 1 MB file, first screen | under 1.5 s, no main-thread stall over 100 ms |
 | Typing in Find on a 1 MB file | No dropped frames; the count updates within 200 ms of the last keystroke |
 
@@ -64,9 +64,9 @@ Per keystroke in Find on the 1 MB note, main-actor search time goes from about 6
 
 1. Build a Release configuration onto the phone from Xcode (Product > Profile, or `make open`). Use a real phone, not a simulator.
 2. Copy `docs/perf/fixtures/*.md` to the phone's Files app (AirDrop or iCloud Drive), for example into "On My iPhone".
-3. **App launch.** Instruments > **App Launch** template, record, and in Files tap `note-20k.md` after killing MdV from the app switcher (cold) or after opening it once and leaving it (warm). Stop when the text is on screen. Read the time from process start to the first frame.
+3. **App launch.** Instruments > **App Launch** template, record, and in Files tap `note-20k.md` after killing YAMD from the app switcher (cold) or after opening it once and leaving it (warm). Stop when the text is on screen. Read the time from process start to the first frame.
 4. **Signposts.** Add the **os_signpost** instrument (or use the "Points of Interest" template) and filter to subsystem `us.par72.mdview`. The `open` interval is the open-to-render time; `decode`, `prepare`, `parse` and `layout` split it, and `firstRender` marks the end. Check `layout` on the 200 KB and 1 MB notes for main-thread stalls over 100 ms (the Hangs instrument shows them).
-5. **Share extension.** Choose the MdV target when Instruments asks which process to attach to, or attach by name `mdviewShare`, then share `note-20k.md` text from Files or Notes. Read `open` from the `viewDidLoad` start, and Memory (Allocations or the Debug navigator gauge) for resident size against the 60 MB budget.
+5. **Share extension.** Choose the YAMD target when Instruments asks which process to attach to, or attach by name `mdviewShare`, then share `note-20k.md` text from Files or Notes. Read `open` from the `viewDidLoad` start, and Memory (Allocations or the Debug navigator gauge) for resident size against the 60 MB budget.
 6. Repeat each scenario five times and record the median.
 
 ## Device results

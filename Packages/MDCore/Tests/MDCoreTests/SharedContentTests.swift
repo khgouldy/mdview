@@ -128,10 +128,10 @@ struct SharedContentTests {
     }
 
     @Test func `messages use the app name`() {
-        #expect(SharedContentError.binary.message(appName: "MdV") == "MdV shows Markdown and text files.")
-        #expect(SharedContentError.empty.message(appName: "MdV") == "Nothing to show.")
-        #expect(SharedContentError.tooLarge(byteCount: 6_000_000).message(appName: "MdV").contains("5 MB"))
+        #expect(SharedContentError.binary.message(appName: "YAMD") == "YAMD shows Markdown and text files.")
+        #expect(SharedContentError.empty.message(appName: "YAMD") == "Nothing to show.")
+        #expect(SharedContentError.tooLarge(byteCount: 6_000_000).message(appName: "YAMD").contains("5 MB"))
         #expect(SharedContentError.nothingShared.message(appName: "X").hasPrefix("X "))
-        #expect(!SharedContentError.unreadable.message(appName: "MdV").isEmpty)
+        #expect(!SharedContentError.unreadable.message(appName: "YAMD").isEmpty)
     }
 }

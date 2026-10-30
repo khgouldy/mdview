@@ -60,7 +60,7 @@ enum LaunchScreen {
         return nil
     }
 
-    /// Launches MdV with this text on the pasteboard, put there by the app itself (`MDVIEW_SEED_PASTEBOARD`), so
+    /// Launches YAMD with this text on the pasteboard, put there by the app itself (`MDVIEW_SEED_PASTEBOARD`), so
     /// tapping Paste shows no "Allow Paste" prompt. That prompt blocks the app's main thread, and XCUITest queries
     /// on the app then time out.
     static func launch(pasteboard text: String) -> XCUIApplication {

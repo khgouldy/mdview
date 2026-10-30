@@ -10,6 +10,6 @@ enum AppName {
     static func display(from bundle: Bundle) -> String {
         bundle.object(forInfoDictionaryKey: "CFBundleDisplayName") as? String
             ?? bundle.object(forInfoDictionaryKey: "CFBundleName") as? String
-            ?? "MdV"
+            ?? "YAMD"
     }
 }

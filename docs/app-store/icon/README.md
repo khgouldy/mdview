@@ -1,4 +1,4 @@
-# MdV app icon directions
+# YAMD app icon directions
 
 Three directions for the app icon, each in three appearances. They are generated, not drawn by hand:
 
@@ -16,7 +16,7 @@ Files: `directions/{a,b,c}/{any,dark,tinted}.{svg,png}` and `contact-sheet.png`.
 | Direction | Concept | any | dark | tinted |
 | --- | --- | --- | --- | --- |
 | **A, Folded page** (default) | A page with a dog-ear carrying the Markdown mark: a bold M and a down arrow | White page, green mark, on a `#2E6B4A` to `#1F4A33` gradient | Page `#5BBF8A`, mark `#E8F5EE`, transparent background | Grayscale page and mark, transparent |
-| B, MdV monogram | Geometric "MdV" letterforms as paths; the V's point doubles as a down arrow | White letters on the gradient | `#5BBF8A` letters, transparent | Grayscale |
+| B, YAMD monogram | Geometric "YAMD" letterforms as paths; the V's point doubles as a down arrow | White letters on the gradient | `#5BBF8A` letters, transparent | Grayscale |
 | C, Reading lines | An off-white `#F4F1EA` card with a heading bar, three text lines and a checked box | Green shapes on the card, on the gradient | Light card and green shapes, transparent | Grayscale |
 
 B differs from the plan's wording: the V stays a plain V, because a shaft or tail on it read as a "Y" or "MdY" in testing.

@@ -1,14 +1,14 @@
-# MdV (repo: mdview)
+# YAMD (repo: mdview)
 
 [![CI](https://github.com/khgouldy/mdview/actions/workflows/ci.yml/badge.svg)](https://github.com/khgouldy/mdview/actions/workflows/ci.yml)
 
-MdV is an iOS app that opens a Markdown file and shows it. Nothing leaves the phone. There is no account, no sync, and no image download. One control switches Rendered and Source.
+YAMD is an iOS app that opens a Markdown file and shows it. Nothing leaves the phone. There is no account, no sync, and no image download. One control switches Rendered and Source.
 
 Version 0.2.0 (build 3). iOS 18 and later, iPhone and iPad.
 
 ## Features
 
-- Share Markdown or text from any app's share sheet to the MdV Share extension and it renders in place. Paste Markdown from the launch screen, and read the How to Open Files guide. Task lists render as read-only checkboxes.
+- Share Markdown or text from any app's share sheet to the YAMD Share extension and it renders in place. Paste Markdown from the launch screen, and read the How to Open Files guide. Task lists render as read-only checkboxes.
 - Opens `.md`, `.markdown`, `.mdown`, and plain text from Files, the share sheet, Open In, Recents, and iPad drag and drop. The system document browser does that work. There is no separate file list in the app.
 - Renders Markdown with [Textual](https://github.com/gonzalezreal/textual) in the GitHub style, with Textual's built-in code highlighting. The reading column stays narrow on iPad. Text follows Dynamic Type and Dark Mode.
 - Source is the file as stored: selectable, monospaced, and scaled with Dynamic Type.

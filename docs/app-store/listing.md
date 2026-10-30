@@ -1,4 +1,4 @@
-# MdV App Store listing
+# YAMD App Store listing
 
 Everything App Store Connect asks for that doesn't need the Apple login. Character counts were measured with Python `len()` on the exact text below. App Store Connect counts characters, not bytes.
 
@@ -6,9 +6,11 @@ Bundle ID `us.par72.mdview`, version 0.2.0 (build 3), SKU `mdview`. iPhone and i
 
 ## App name
 
-**MdV: Markdown Viewer** (20/30)
+**YAMD: Yet Another MD Viewer** (27/30)
 
-The home screen name is `MdV`. It comes from `APP_DISPLAY_NAME` in `project.yml` through `CFBundleDisplayName` in `Info.plist`. The bundle ID, SKU, repo, scheme and target stay `mdview`. `make lint` fails if this heading and `APP_DISPLAY_NAME` disagree.
+Renamed Oct 30, 2026 from YAMD to YAMD ("Yet Another Markdown Viewer"). "YAMD: Yet Another Markdown Viewer" is 33 characters, over the 30 limit, so the store name is "YAMD: Yet Another MD Viewer", accepted by App Store Connect on Oct 30, 2026. es-MX: "YAMD: Visor de Markdown"; fr-CA: "YAMD : Lecteur Markdown".
+
+The home screen name is `YAMD`. It comes from `APP_DISPLAY_NAME` in `project.yml` through `CFBundleDisplayName` in `Info.plist`. The bundle ID, SKU, repo, scheme and target stay `mdview`. `make lint` fails if this heading and `APP_DISPLAY_NAME` disagree.
 
 Name check, Oct 26, 2026 (App Store search): no app is named MdV. "Midea MDV" (an HVAC remote) and "MDView: Markdown Viewer" exist. App names must be unique across the store, so only App Store Connect confirms availability, when the app record is created or renamed. If MdV is refused, pick another row below and change `APP_DISPLAY_NAME` (one line) and this heading together.
 
@@ -40,14 +42,14 @@ Read Markdown files on iPhone and iPad, rendered or as source. Everything stays 
 ## Description
 
 ```text
-MdV opens a Markdown file and shows it. That's the whole app.
+YAMD opens a Markdown file and shows it. That's the whole app.
 
-Pick a .md file in the Files app or from Recents, and MdV renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
+Pick a .md file in the Files app or from Recents, and YAMD renders it cleanly: headings, lists, task lists, tables, block quotes, links, and code blocks with syntax highlighting. One tap switches to Source, which shows the file exactly as stored in a monospaced font you can select and copy.
 
 READ ANYTHING SHARED TO YOU
-• Share any Markdown or text to MdV from any app's share sheet and read it instantly. It opens right there, with no app switch.
-• Paste Markdown: copy text from a chat or an email, open MdV, and tap Paste. Save it to Files if you want to keep it.
-• A built-in guide, How to Open Files, shows every way to get a file into MdV.
+• Share any Markdown or text to YAMD from any app's share sheet and read it instantly. It opens right there, with no app switch.
+• Paste Markdown: copy text from a chat or an email, open YAMD, and tap Paste. Save it to Files if you want to keep it.
+• A built-in guide, How to Open Files, shows every way to get a file into YAMD.
 
 MADE FOR LONG READS
 • Outline: see every heading and jump straight to it.
@@ -61,9 +63,9 @@ MADE FOR LONG READS
 • Keyboard shortcuts on iPad: rendered and source, outline, text size, print, and export.
 
 PRIVATE BY DESIGN
-• No network access. MdV never connects to the internet.
+• No network access. YAMD never connects to the internet.
 • No account, no sign-in, no analytics, no ads, no tracking.
-• Your files never leave your device. MdV reads them in place and never changes them.
+• Your files never leave your device. YAMD reads them in place and never changes them.
 • Web images are not downloaded. They show as a link you can tap to open in Safari. Images stored next to your document are shown inline.
 
 FEATURES
@@ -75,9 +77,9 @@ FEATURES
 • iPhone and iPad, including drag and drop on iPad.
 
 WHAT IT ISN'T
-MdV is a viewer, not an editor. It doesn't sync, and it doesn't manage a library of notes. It opens the file you choose and gets out of the way.
+YAMD is a viewer, not an editor. It doesn't sync, and it doesn't manage a library of notes. It opens the file you choose and gets out of the way.
 
-MdV is open source under the MIT license: github.com/khgouldy/mdview
+YAMD is open source under the MIT license: github.com/khgouldy/mdview
 ```
 
 2379/4000
@@ -86,7 +88,7 @@ MdV is open source under the MIT license: github.com/khgouldy/mdview
 
 ```text
 • Outline: jump to any heading in a long document.
-• MdV reopens a file where you stopped reading.
+• YAMD reopens a file where you stopped reading.
 • Reading settings for text size, column width, and font.
 • Copy button on code blocks.
 • Export to PDF and print.
@@ -109,7 +111,7 @@ MdV is open source under the MIT license: github.com/khgouldy/mdview
 md,viewer,notes,readme,preview,offline,wikilinks,yaml,front matter,plain text,txt,docs,code,syntax
 ```
 
-98/100. Comma separated, no spaces after commas. Words already in the name and subtitle (MdV, markdown, private, reader) are left out because Apple indexes those anyway. Third-party trademarks (Obsidian, GitHub) are left out of the keywords to avoid a guideline 2.3.7 rejection; the description mentions Obsidian only to describe a feature.
+98/100. Comma separated, no spaces after commas. Words already in the name and subtitle (YAMD, markdown, private, reader) are left out because Apple indexes those anyway. Third-party trademarks (Obsidian, GitHub) are left out of the keywords to avoid a guideline 2.3.7 rejection; the description mentions Obsidian only to describe a feature.
 
 ## Categories
 
@@ -149,7 +151,7 @@ Answer None / No to every question:
 | User-generated content (social, messaging) | No |
 | Loot boxes, in-app purchases, advertising, parental controls, age assurance | No |
 
-Expected rating: 4+ (the lowest band). Note for the reviewer and for the "user-generated content" question: MdV displays files the user opens from their own device. It has no unrestricted web access (no browser, no network), no sharing between users, and no content from the developer beyond the app itself. Displaying the user's own local files is not user-generated content in Apple's sense, so the answer is No.
+Expected rating: 4+ (the lowest band). Note for the reviewer and for the "user-generated content" question: YAMD displays files the user opens from their own device. It has no unrestricted web access (no browser, no network), no sharing between users, and no content from the developer beyond the app itself. Displaying the user's own local files is not user-generated content in Apple's sense, so the answer is No.
 
 ## App privacy (privacy nutrition label)
 
@@ -184,11 +186,11 @@ Does the app contain, show, or access third-party content? No. It shows only fil
 - Notes (1344/4000 characters):
 
 ```text
-MdV is a local Markdown viewer. No login, account, or network access is needed.
+YAMD is a local Markdown viewer. No login, account, or network access is needed.
 
-The app includes a Share extension (MdV in the share sheet). It shows the one text or Markdown item you share, in the share sheet itself. It reads only that item, keeps nothing, and never leaves the device or opens the network. To test it: in Notes or Messages, select some Markdown text, tap Share, and choose MdV (under More the first time). It renders; Done closes it. The launch screen also has Paste, which shows the clipboard as a document, and How to Open Files, a guide.
+The app includes a Share extension (YAMD in the share sheet). It shows the one text or Markdown item you share, in the share sheet itself. It reads only that item, keeps nothing, and never leaves the device or opens the network. To test it: in Notes or Messages, select some Markdown text, tap Share, and choose YAMD (under More the first time). It renders; Done closes it. The launch screen also has Paste, which shows the clipboard as a document, and How to Open Files, a guide.
 
-To test the main app: launch MdV. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has the Obsidian extras and Math (LaTeX) switches, reading settings (text size, width, font), Export PDF and Print, and How to Open Files. In a document with two or more headings, the Outline button lists them and jumps to one.
+To test the main app: launch YAMD. The system document browser appears. Open any .md file from Files (for example, save a README.md from any GitHub repository to On My iPhone, or create a text file named test.md). The file opens rendered. Use the Rendered / Source control at the bottom to switch views. Pull down on the document to show Find and type a word to see matches highlighted. The ellipsis menu (top right) has the Obsidian extras and Math (LaTeX) switches, reading settings (text size, width, font), Export PDF and Print, and How to Open Files. In a document with two or more headings, the Outline button lists them and jumps to one.
 
 The app never uses the network. Web images in a document are shown as a link that opens Safari only when tapped. The app collects no data.
 ```

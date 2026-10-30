@@ -1,6 +1,6 @@
 # Architecture
 
-MdV is a read-only SwiftUI document app; the repo, target and module are named `mdview`. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Version 0.2.0 (build 3). Product code is the app target, the `mdviewShare` Share extension, and `Packages/MDCore`.
+YAMD is a read-only SwiftUI document app; the repo, target and module are named `mdview`. iOS 18, Swift 6, strict concurrency. The Xcode project is generated from `project.yml`. Version 0.2.0 (build 3). Product code is the app target, the `mdviewShare` Share extension, and `Packages/MDCore`.
 
 ## Opening a file
 
@@ -46,13 +46,13 @@ The app target compiles `App/mdview` (scene, `TextDocument`, `ReaderView`, debug
 
 `mdviewShare` (`us.par72.mdview.share`, `com.apple.share-services`, display name `$(APP_DISPLAY_NAME)`) shows shared Markdown and text in the share sheet itself. It never opens the app: a Share extension has no supported API for that, and an App Group hand-off would need a new entitlement (K7). It has its own `PrivacyInfo.xcprivacy` (UserDefaults `CA92.1`, for reading `obsidian.enabled` in its own defaults domain) and writes no defaults.
 
-**Activation (K9).** `App/mdviewShare/Info.plist` (Release) offers MdV when exactly one attachment of exactly one item conforms to `public.text` or is a `public.file-url`:
+**Activation (K9).** `App/mdviewShare/Info.plist` (Release) offers YAMD when exactly one attachment of exactly one item conforms to `public.text` or is a `public.file-url`:
 
 ```
 SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.text" OR ANY $a.registeredTypeIdentifiers UTI-CONFORMS-TO "public.file-url").@count == 1).@count == 1
 ```
 
-`public.plain-text`, `public.utf8-plain-text` (a chat app's nameless "Text Document"), Markdown, RTF and HTML all conform to `public.text`. Photos, PDFs and web links don't. `Info-Debug.plist` is identical except the rule also accepts `public.data`, so a Debug build is offered for anything and its info panel shows what a host actually registered. Two matching attachments don't activate MdV, and in Debug a photo plus text counts as two. `make lint` enforces all of this (`check_share_extension`).
+`public.plain-text`, `public.utf8-plain-text` (a chat app's nameless "Text Document"), Markdown, RTF and HTML all conform to `public.text`. Photos, PDFs and web links don't. `Info-Debug.plist` is identical except the rule also accepts `public.data`, so a Debug build is offered for anything and its info panel shows what a host actually registered. Two matching attachments don't activate YAMD, and in Debug a photo plus text counts as two. `make lint` enforces all of this (`check_share_extension`).
 
 **Flow.**
 
@@ -65,9 +65,9 @@ SUBQUERY(extensionItems, $item, SUBQUERY($item.attachments, $a, ANY $a.registere
 
 | Case | Message |
 | --- | --- |
-| No usable attachment, or binary bytes (a PDF file URL) | "MdV shows Markdown and text files." |
+| No usable attachment, or binary bytes (a PDF file URL) | "YAMD shows Markdown and text files." |
 | Empty or whitespace-only | "Nothing to show." |
-| Over 5 MB | "This is too large to show here. MdV shows shared text up to 5 MB." |
+| Over 5 MB | "This is too large to show here. YAMD shows shared text up to 5 MB." |
 | Every load path failed | "The shared item could not be read." |
 
 The product name comes from `AppName.display`.
