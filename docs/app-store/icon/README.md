@@ -33,4 +33,4 @@ A's dark variant has modest contrast between page and mark (about 2:1); strength
 
 ## Default and decision
 
-The default is **A, Folded page**. keving picks the direction in L10; until then `App/mdview/Assets.xcassets/AppIcon.appiconset` is unchanged.
+keving picked a final icon for 0.2.0 build 5 (a 1024x1024 RGB PNG, no alpha, based on direction C). It is installed as all three images in `App/mdview/Assets.xcassets/AppIcon.appiconset` (any, dark and tinted), so `make icon` would overwrite it; don't run it unless the icon changes again.
